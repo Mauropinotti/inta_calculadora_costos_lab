@@ -126,6 +126,26 @@ export function LevelOneCard({ level, onSublevelChange }: LevelOneCardProps) {
             />
           );
         })}
+
+        <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <header className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-lg font-semibold text-slate-800">
+              Subtotal de Nivel 1 Costos Directos Unitarios
+            </h3>
+            <span className="text-base font-semibold text-inta-green">
+              {currencyFormatter.format(total)}
+            </span>
+          </header>
+
+          <dl className="grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+            {breakdown.map((item) => (
+              <div key={item.id} className="flex items-center justify-between gap-4">
+                <dt className="font-medium text-slate-700">{item.name}</dt>
+                <dd>{currencyFormatter.format(item.subtotal)}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
       </div>
     </section>
   );
