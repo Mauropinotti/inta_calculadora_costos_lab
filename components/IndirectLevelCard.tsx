@@ -1,0 +1,653 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { z } from "zod";
+import {
+  IndirectLevelGroupState,
+  IndirectSublevelState,
+  IndirectEquipmentItem,
+  IndirectEquipmentSublevelState,
+  SharedResourceCostItem,
+  SharedResourceSublevelState,
+  calculateIndirectSublevelSubtotal,
+  calculateIndirectEquipmentItemCost,
+  calculateSharedResourceItemCost,
+  currencyFormatter
+} from "@/lib/cost-calculation";
+import { PlusIcon } from "./icons";
+
+interface IndirectLevelCardProps {
+  level: IndirectLevelGroupState;
+  onSublevelChange: (sublevel: IndirectSublevelState) => void;
+}
+
+const sharedResourceSchema = z.object({
+  concept: z.string().min(1, "Ingresa un concepto"),
+  monthlyCost: z
+    .number({ invalid_type_error: "Ingresa el costo mensual" })
+    .nonnegative("El costo mensual debe ser mayor o igual a cero"),
+  determinations: z
+    .number({
+      invalid_type_error: "Ingresa la cantidad de determinaciones"
+    })
+    .gt(0, "Las determinaciones deben ser mayores a cero")
+});
+
+const indirectEquipmentSchema = z.object({
+  name: z.string().min(1, "Ingresa el nombre del equipo"),
+  purchasePrice: z
+    .number({ invalid_type_error: "Ingresa el precio de compra" })
+    .nonnegative("El precio debe ser mayor o igual a cero"),
+  usefulLifeMonths: z
+    .number({
+      invalid_type_error: "Ingresa la vida útil en meses"
+    })
+    .gt(0, "La vida útil debe ser mayor a cero"),
+  determinations: z
+    .number({ invalid_type_error: "Ingresa las determinaciones mensuales" })
+    .gt(0, "Las determinaciones deben ser mayores a cero")
+});
+
+export function IndirectLevelCard({
+  level,
+  onSublevelChange
+}: IndirectLevelCardProps) {
+  const breakdown = useMemo(
+    () =>
+      level.sublevels.map((sublevel) => ({
+        id: sublevel.id,
+        name: sublevel.name,
+        subtotal: calculateIndirectSublevelSubtotal(sublevel)
+      })),
+    [level]
+  );
+
+  const total = useMemo(
+    () => breakdown.reduce((acc, item) => acc + item.subtotal, 0),
+    [breakdown]
+  );
+
+  return (
+    <section className="space-y-6 rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm">
+      <header className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-inta-blue">{level.name}</h2>
+          <span className="text-lg font-bold text-inta-green">
+            {currencyFormatter.format(total)}
+          </span>
+        </div>
+        <p className="text-sm text-slate-600">{level.description}</p>
+        <ul className="flex flex-wrap gap-3 text-xs text-slate-500">
+          {breakdown.map((item) => (
+            <li key={item.id} className="flex items-center gap-1">
+              <span className="font-medium text-slate-700">{item.name}:</span>
+              <span>{currencyFormatter.format(item.subtotal)}</span>
+            </li>
+          ))}
+        </ul>
+      </header>
+
+      <div className="space-y-8">
+        {level.sublevels.map((sublevel) => {
+          if (sublevel.type === "shared-resource") {
+            return (
+              <SharedResourceSublevelSection
+                key={sublevel.id}
+                sublevel={sublevel}
+                onChange={onSublevelChange}
+              />
+            );
+          }
+
+          return (
+            <IndirectEquipmentSublevelSection
+              key={sublevel.id}
+              sublevel={sublevel}
+              onChange={onSublevelChange}
+            />
+          );
+        })}
+
+        <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <header className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-lg font-semibold text-slate-800">
+              Subtotal de Nivel 2 Costos Indirectos Unitarios
+            </h3>
+            <span className="text-base font-semibold text-inta-green">
+              {currencyFormatter.format(total)}
+            </span>
+          </header>
+
+          <dl className="grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+            {breakdown.map((item) => (
+              <div key={item.id} className="flex items-center justify-between gap-4">
+                <dt className="font-medium text-slate-700">{item.name}</dt>
+                <dd>{currencyFormatter.format(item.subtotal)}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      </div>
+    </section>
+  );
+}
+
+interface SharedResourceSublevelSectionProps {
+  sublevel: SharedResourceSublevelState;
+  onChange: (updated: SharedResourceSublevelState) => void;
+}
+
+function SharedResourceSublevelSection({
+  sublevel,
+  onChange
+}: SharedResourceSublevelSectionProps) {
+  const subtotal = useMemo(
+    () => calculateIndirectSublevelSubtotal(sublevel),
+    [sublevel]
+  );
+  const [draft, setDraft] = useState({
+    concept: "",
+    monthlyCost: "",
+    determinations: ""
+  });
+  const [error, setError] = useState<string | null>(null);
+
+  const handleAdd = () => {
+    setError(null);
+
+    if (draft.monthlyCost === "" || draft.determinations === "") {
+      setError("Completa el costo mensual y las determinaciones");
+      return;
+    }
+
+    const parsed = sharedResourceSchema.safeParse({
+      concept: draft.concept.trim(),
+      monthlyCost: Number(draft.monthlyCost),
+      determinations: Number(draft.determinations)
+    });
+
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Datos inválidos");
+      return;
+    }
+
+    const newItem: SharedResourceCostItem = {
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      ...parsed.data
+    };
+
+    onChange({ ...sublevel, items: [...sublevel.items, newItem] });
+    setDraft({ concept: "", monthlyCost: "", determinations: "" });
+  };
+
+  const handleFieldChange = (
+    id: string,
+    field: keyof SharedResourceCostItem,
+    value: string
+  ) => {
+    const updated = sublevel.items.map((item) =>
+      item.id === id
+        ? {
+            ...item,
+            [field]: field === "concept" ? value : Number(value)
+          }
+        : item
+    );
+    onChange({ ...sublevel, items: updated });
+  };
+
+  const handleDelete = (id: string) => {
+    onChange({
+      ...sublevel,
+      items: sublevel.items.filter((item) => item.id !== id)
+    });
+  };
+
+  return (
+    <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+      <header className="space-y-1">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-slate-800">
+            {sublevel.name}
+          </h3>
+          <span className="text-base font-semibold text-inta-green">
+            {currencyFormatter.format(subtotal)}
+          </span>
+        </div>
+        <p className="text-sm text-slate-600">{sublevel.description}</p>
+      </header>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <thead className="bg-slate-100 text-left">
+            <tr>
+              <th className="px-3 py-2 font-medium text-slate-700">Concepto</th>
+              <th className="px-3 py-2 font-medium text-slate-700">
+                Costo mensual (ARS)
+              </th>
+              <th className="px-3 py-2 font-medium text-slate-700">
+                Determinaciones mensuales
+              </th>
+              <th className="px-3 py-2 font-medium text-slate-700">Costo unitario</th>
+              <th className="px-3 py-2 font-medium text-slate-700">Acciones</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {sublevel.items.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={5}
+                  className="px-3 py-6 text-center text-sm text-slate-500"
+                >
+                  Aún no hay registros. Completa el formulario inferior para sumar
+                  conceptos a este subnivel.
+                </td>
+              </tr>
+            ) : null}
+            {sublevel.items.map((item) => (
+              <tr key={item.id}>
+                <td className="px-3 py-2">
+                  <input
+                    type="text"
+                    value={item.concept}
+                    onChange={(event) =>
+                      handleFieldChange(item.id, "concept", event.target.value)
+                    }
+                    className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={item.monthlyCost}
+                    onChange={(event) =>
+                      handleFieldChange(item.id, "monthlyCost", event.target.value)
+                    }
+                    className="w-36 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    type="number"
+                    min={0}
+                    step="1"
+                    value={item.determinations}
+                    onChange={(event) =>
+                      handleFieldChange(
+                        item.id,
+                        "determinations",
+                        event.target.value
+                      )
+                    }
+                    className="w-36 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
+                  />
+                </td>
+                <td className="px-3 py-2 font-medium text-slate-700">
+                  {currencyFormatter.format(
+                    calculateSharedResourceItemCost(item)
+                  )}
+                </td>
+                <td className="px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(item.id)}
+                    className="text-sm font-medium text-rose-600 hover:text-rose-500"
+                  >
+                    Eliminar
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <form
+        className="grid gap-3 rounded-lg border border-dashed border-slate-300 bg-white/70 p-4 text-sm text-slate-600 md:grid-cols-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          handleAdd();
+        }}
+      >
+        <label className="flex flex-col space-y-1 md:col-span-2">
+          <span>Concepto</span>
+          <input
+            type="text"
+            value={draft.concept}
+            onChange={(event) =>
+              setDraft((prev) => ({ ...prev, concept: event.target.value }))
+            }
+            className="rounded-md border border-slate-300 px-3 py-2 focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
+          />
+        </label>
+        <label className="flex flex-col space-y-1">
+          <span>Costo mensual (ARS)</span>
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            value={draft.monthlyCost}
+            onChange={(event) =>
+              setDraft((prev) => ({ ...prev, monthlyCost: event.target.value }))
+            }
+            className="rounded-md border border-slate-300 px-3 py-2 focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
+          />
+        </label>
+        <label className="flex flex-col space-y-1">
+          <span>Determinaciones mensuales</span>
+          <input
+            type="number"
+            min={0}
+            step="1"
+            value={draft.determinations}
+            onChange={(event) =>
+              setDraft((prev) => ({
+                ...prev,
+                determinations: event.target.value
+              }))
+            }
+            className="rounded-md border border-slate-300 px-3 py-2 focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
+          />
+        </label>
+
+        <button
+          type="submit"
+          className="flex items-center justify-center gap-2 rounded-md bg-inta-blue px-3 py-2 text-sm font-medium text-white transition hover:bg-inta-blue/90"
+        >
+          <PlusIcon className="h-4 w-4" />
+          Agregar
+        </button>
+      </form>
+
+      {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+    </section>
+  );
+}
+
+interface IndirectEquipmentSectionProps {
+  sublevel: IndirectEquipmentSublevelState;
+  onChange: (updated: IndirectEquipmentSublevelState) => void;
+}
+
+function IndirectEquipmentSublevelSection({
+  sublevel,
+  onChange
+}: IndirectEquipmentSectionProps) {
+  const subtotal = useMemo(
+    () => calculateIndirectSublevelSubtotal(sublevel),
+    [sublevel]
+  );
+  const [draft, setDraft] = useState({
+    name: "",
+    purchasePrice: "",
+    usefulLifeMonths: "",
+    determinations: ""
+  });
+  const [error, setError] = useState<string | null>(null);
+
+  const handleAdd = () => {
+    setError(null);
+
+    if (
+      draft.purchasePrice === "" ||
+      draft.usefulLifeMonths === "" ||
+      draft.determinations === ""
+    ) {
+      setError("Completa el precio, la vida útil y las determinaciones");
+      return;
+    }
+
+    const parsed = indirectEquipmentSchema.safeParse({
+      name: draft.name.trim(),
+      purchasePrice: Number(draft.purchasePrice),
+      usefulLifeMonths: Number(draft.usefulLifeMonths),
+      determinations: Number(draft.determinations)
+    });
+
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Datos inválidos");
+      return;
+    }
+
+    const newItem: IndirectEquipmentItem = {
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      ...parsed.data
+    };
+
+    onChange({ ...sublevel, items: [...sublevel.items, newItem] });
+    setDraft({ name: "", purchasePrice: "", usefulLifeMonths: "", determinations: "" });
+  };
+
+  const handleFieldChange = (
+    id: string,
+    field: keyof IndirectEquipmentItem,
+    value: string
+  ) => {
+    const updated = sublevel.items.map((item) =>
+      item.id === id
+        ? {
+            ...item,
+            [field]: field === "name" ? value : Number(value)
+          }
+        : item
+    );
+    onChange({ ...sublevel, items: updated });
+  };
+
+  const handleDelete = (id: string) => {
+    onChange({
+      ...sublevel,
+      items: sublevel.items.filter((item) => item.id !== id)
+    });
+  };
+
+  return (
+    <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+      <header className="space-y-1">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-slate-800">
+            {sublevel.name}
+          </h3>
+          <span className="text-base font-semibold text-inta-green">
+            {currencyFormatter.format(subtotal)}
+          </span>
+        </div>
+        <p className="text-sm text-slate-600">{sublevel.description}</p>
+      </header>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <thead className="bg-slate-100 text-left">
+            <tr>
+              <th className="px-3 py-2 font-medium text-slate-700">
+                Equipamiento menor
+              </th>
+              <th className="px-3 py-2 font-medium text-slate-700">
+                Precio de compra (ARS)
+              </th>
+              <th className="px-3 py-2 font-medium text-slate-700">
+                Vida útil (meses)
+              </th>
+              <th className="px-3 py-2 font-medium text-slate-700">
+                Determinaciones mensuales
+              </th>
+              <th className="px-3 py-2 font-medium text-slate-700">
+                Costo unitario
+              </th>
+              <th className="px-3 py-2 font-medium text-slate-700">Acciones</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {sublevel.items.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={6}
+                  className="px-3 py-6 text-center text-sm text-slate-500"
+                >
+                  Aún no hay registros. Completa el formulario inferior para sumar
+                  equipos menores.
+                </td>
+              </tr>
+            ) : null}
+            {sublevel.items.map((item) => (
+              <tr key={item.id}>
+                <td className="px-3 py-2">
+                  <input
+                    type="text"
+                    value={item.name}
+                    onChange={(event) =>
+                      handleFieldChange(item.id, "name", event.target.value)
+                    }
+                    className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={item.purchasePrice}
+                    onChange={(event) =>
+                      handleFieldChange(
+                        item.id,
+                        "purchasePrice",
+                        event.target.value
+                      )
+                    }
+                    className="w-36 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    type="number"
+                    min={0}
+                    step="1"
+                    value={item.usefulLifeMonths}
+                    onChange={(event) =>
+                      handleFieldChange(
+                        item.id,
+                        "usefulLifeMonths",
+                        event.target.value
+                      )
+                    }
+                    className="w-36 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    type="number"
+                    min={0}
+                    step="1"
+                    value={item.determinations}
+                    onChange={(event) =>
+                      handleFieldChange(
+                        item.id,
+                        "determinations",
+                        event.target.value
+                      )
+                    }
+                    className="w-36 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
+                  />
+                </td>
+                <td className="px-3 py-2 font-medium text-slate-700">
+                  {currencyFormatter.format(
+                    calculateIndirectEquipmentItemCost(item)
+                  )}
+                </td>
+                <td className="px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(item.id)}
+                    className="text-sm font-medium text-rose-600 hover:text-rose-500"
+                  >
+                    Eliminar
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <form
+        className="grid gap-3 rounded-lg border border-dashed border-slate-300 bg-white/70 p-4 text-sm text-slate-600 md:grid-cols-5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          handleAdd();
+        }}
+      >
+        <label className="flex flex-col space-y-1 md:col-span-2">
+          <span>Equipamiento menor</span>
+          <input
+            type="text"
+            value={draft.name}
+            onChange={(event) =>
+              setDraft((prev) => ({ ...prev, name: event.target.value }))
+            }
+            className="rounded-md border border-slate-300 px-3 py-2 focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
+          />
+        </label>
+        <label className="flex flex-col space-y-1">
+          <span>Precio de compra (ARS)</span>
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            value={draft.purchasePrice}
+            onChange={(event) =>
+              setDraft((prev) => ({
+                ...prev,
+                purchasePrice: event.target.value
+              }))
+            }
+            className="rounded-md border border-slate-300 px-3 py-2 focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
+          />
+        </label>
+        <label className="flex flex-col space-y-1">
+          <span>Vida útil (meses)</span>
+          <input
+            type="number"
+            min={0}
+            step="1"
+            value={draft.usefulLifeMonths}
+            onChange={(event) =>
+              setDraft((prev) => ({
+                ...prev,
+                usefulLifeMonths: event.target.value
+              }))
+            }
+            className="rounded-md border border-slate-300 px-3 py-2 focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
+          />
+        </label>
+        <label className="flex flex-col space-y-1">
+          <span>Determinaciones mensuales</span>
+          <input
+            type="number"
+            min={0}
+            step="1"
+            value={draft.determinations}
+            onChange={(event) =>
+              setDraft((prev) => ({
+                ...prev,
+                determinations: event.target.value
+              }))
+            }
+            className="rounded-md border border-slate-300 px-3 py-2 focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
+          />
+        </label>
+
+        <button
+          type="submit"
+          className="flex items-center justify-center gap-2 rounded-md bg-inta-blue px-3 py-2 text-sm font-medium text-white transition hover:bg-inta-blue/90"
+        >
+          <PlusIcon className="h-4 w-4" />
+          Agregar
+        </button>
+      </form>
+
+      {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+    </section>
+  );
+}

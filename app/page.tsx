@@ -3,13 +3,15 @@
 import { useMemo, useState } from "react";
 import { IntroPanel } from "@/components/IntroPanel";
 import { LevelOneCard } from "@/components/LevelOneCard";
+import { IndirectLevelCard } from "@/components/IndirectLevelCard";
 import { PercentageLevelCard } from "@/components/PercentageLevelCard";
 import { SummaryPanel } from "@/components/SummaryPanel";
 import type {
   LevelKey,
   LevelState,
   PercentageLevelState,
-  SublevelState
+  SublevelState,
+  IndirectSublevelState
 } from "@/lib/cost-calculation";
 import { calculateTotals } from "@/lib/cost-calculation";
 
@@ -78,12 +80,44 @@ const initialLevels: LevelState[] = [
   },
   {
     id: "serviciosGenerales",
-    name: "Nivel 2 · Servicios generales y soporte",
+    name: "Nivel 2 · Costos Indirectos Unitarios",
     description:
-      "Aplica un porcentaje para cubrir utilidades comunes: energía, agua, limpieza, bioseguridad, calibraciones transversales y soporte administrativo.",
-    type: "percentage",
-    rate: 12,
-    base: ["nivel1"]
+      "Identifica y distribuye los recursos transversales del laboratorio que sostienen cada determinación, prorrateándolos según las prácticas realizadas.",
+    type: "indirect-group",
+    sublevels: [
+      {
+        id: "materialesNoDescartables",
+        name: "Subnivel 1 · Materiales no descartables",
+        description:
+          "Registra materiales reutilizables (jeringas de vidrio, tubos, frascos, etc.) considerando su costo mensual de reposición y el prorrateo por determinación realizada.",
+        type: "shared-resource",
+        items: []
+      },
+      {
+        id: "equipamientoMenor",
+        name: "Subnivel 2 · Depreciación de equipamiento menor",
+        description:
+          "Calcula la depreciación lineal de los equipos menores de uso transversal (balanzas, heladeras, campanas, etc.) y asigna su costo unitario en función de las determinaciones mensuales del laboratorio.",
+        type: "indirect-equipment",
+        items: []
+      },
+      {
+        id: "mantenimientoEquipamiento",
+        name: "Subnivel 3 · Mantenimiento de equipamiento",
+        description:
+          "Incluye honorarios de especialistas y repuestos vinculados al mantenimiento preventivo y correctivo de los equipos, prorrateados según la actividad mensual.",
+        type: "shared-resource",
+        items: []
+      },
+      {
+        id: "infraestructura",
+        name: "Subnivel 4 · Costos de infraestructura",
+        description:
+          "Agrupa servicios y apoyos generales como energía, gas, agua, limpieza, administración y comunicaciones necesarios para el funcionamiento del laboratorio.",
+        type: "shared-resource",
+        items: []
+      }
+    ]
   },
   {
     id: "gestion",
@@ -111,6 +145,26 @@ export default function HomePage() {
     setLevels((prev) =>
       prev.map((level) => {
         if (level.id !== id || level.type !== "direct-group") {
+          return level;
+        }
+
+        return {
+          ...level,
+          sublevels: level.sublevels.map((sublevel) =>
+            sublevel.id === updatedSublevel.id ? updatedSublevel : sublevel
+          )
+        };
+      })
+    );
+  };
+
+  const handleIndirectSublevelChange = (
+    id: LevelKey,
+    updatedSublevel: IndirectSublevelState
+  ) => {
+    setLevels((prev) =>
+      prev.map((level) => {
+        if (level.id !== id || level.type !== "indirect-group") {
           return level;
         }
 
@@ -177,21 +231,33 @@ export default function HomePage() {
 
         <div className="space-y-6">
           {levels.map((level, index) => {
-            if (level.type === "direct-group") {
-              return (
-                <LevelOneCard
-                  key={level.id}
-                  level={level}
-                  onSublevelChange={(sublevel) =>
-                    handleSublevelChange(level.id, sublevel)
-                  }
-                />
-              );
-            }
+          if (level.type === "direct-group") {
+            return (
+              <LevelOneCard
+                key={level.id}
+                level={level}
+                onSublevelChange={(sublevel) =>
+                  handleSublevelChange(level.id, sublevel)
+                }
+              />
+            );
+          }
 
-            if (level.type !== "percentage") {
-              return null;
-            }
+          if (level.type === "indirect-group") {
+            return (
+              <IndirectLevelCard
+                key={level.id}
+                level={level}
+                onSublevelChange={(sublevel) =>
+                  handleIndirectSublevelChange(level.id, sublevel)
+                }
+              />
+            );
+          }
+
+          if (level.type !== "percentage") {
+            return null;
+          }
 
             const baseBreakdown = levels.slice(0, index).map((candidate) => ({
               id: candidate.id,
