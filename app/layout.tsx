@@ -22,8 +22,8 @@ export default function RootLayout({
           <footer className="bg-slate-900 text-slate-100">
             <div className="mx-auto max-w-6xl space-y-3 px-4 py-6 text-sm leading-relaxed">
               <p>
-                Pinotti, M. H. (2024). <span className="italic">Guía de referencia para la estimación de costos de servicios de
-                laboratorio</span> [PDF]. Instituto Nacional de Tecnología Agropecuaria.
+                Goizueta, Mercedes E. y Castellano, Andrés. (2024). <span className="italic">Guía de referencia para la estimación
+                de costos de servicios de laboratorio</span> [PDF]. Instituto Nacional de Tecnología Agropecuaria.
               </p>
               <p>
                 Desarrollo del software en base a la guía de referencia por Mauro H. Pinotti — Gerencia de Integración
