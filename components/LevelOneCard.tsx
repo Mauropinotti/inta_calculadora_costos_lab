@@ -217,12 +217,18 @@ function SupplySublevelSection({
     () => calculateSublevelSubtotal(sublevel, { exchangeRate }),
     [sublevel, exchangeRate]
   );
-  const [draft, setDraft] = useState({
+  const [draft, setDraft] = useState<{
+    item: string;
+    unitOfMeasure: string;
+    quantity: string;
+    unitCost: string;
+    currency: CurrencyCode;
+  }>({
     item: "",
     unitOfMeasure: "",
     quantity: "",
     unitCost: "",
-    currency: "ARS" as CurrencyCode
+    currency: "ARS"
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -281,7 +287,8 @@ function SupplySublevelSection({
       }
 
       if (field === "currency") {
-        const nextCurrency = (value as CurrencyCode) === "USD" ? "USD" : "ARS";
+        const nextCurrency: CurrencyCode =
+          (value as CurrencyCode) === "USD" ? "USD" : "ARS";
         return {
           ...item,
           currency: nextCurrency
