@@ -12,7 +12,8 @@ import {
   calculateIndirectSublevelSubtotal,
   calculateIndirectEquipmentItemCost,
   calculateSharedResourceItemCost,
-  currencyFormatter
+  currencyFormatter,
+  createInfrastructureDefaultItems
 } from "@/lib/cost-calculation";
 import { InfoIcon, ManualOverrideIcon, PlusIcon } from "./icons";
 
@@ -217,6 +218,7 @@ interface SharedResourceSublevelSectionProps {
 }
 
 const maintenanceSublevelId = "mantenimientoEquipamiento";
+const infrastructureSublevelId = "infraestructura";
 
 const sublevelTooltips: Partial<
   Record<IndirectSublevelState["id"], { title: string; ariaLabel?: string }>
@@ -226,7 +228,8 @@ const sublevelTooltips: Partial<
       "Método lineal prorrateado entre las determinaciones mensuales del laboratorio (criterio guía INTA)."
   },
   infraestructura: {
-    title: "Energía, gas, agua, limpieza, administración, comunicaciones"
+    title:
+      "Incluye costos fijos mensuales: Energía, Gas, Agua, Limpieza, Administración y Comunicaciones. Se prorratean por determinaciones mensuales."
   }
 };
 
@@ -241,6 +244,7 @@ function SharedResourceSublevelSection({
     () => calculateIndirectSublevelSubtotal(sublevel),
     [sublevel]
   );
+  const isInfrastructureSublevel = sublevel.id === infrastructureSublevelId;
   const [draft, setDraft] = useState({
     concept: "",
     monthlyCost: "",
@@ -260,6 +264,62 @@ function SharedResourceSublevelSection({
       determinations: globalDeterminations.toString()
     }));
   }, [globalDeterminations, useGlobalDeterminations]);
+
+  useEffect(() => {
+    if (!isInfrastructureSublevel || sublevel.items.length > 0) {
+      return;
+    }
+
+    onChange({
+      ...sublevel,
+      items: createInfrastructureDefaultItems(globalDeterminations)
+    });
+  }, [
+    globalDeterminations,
+    isInfrastructureSublevel,
+    onChange,
+    sublevel
+  ]);
+
+  useEffect(() => {
+    if (!isInfrastructureSublevel || sublevel.items.length === 0) {
+      return;
+    }
+
+    const normalizedDeterminations =
+      globalDeterminations > 0 ? globalDeterminations : 0;
+
+    const shouldUpdate = sublevel.items.some(
+      (item) =>
+        item.isFixed &&
+        !item.isCustomDeterminations &&
+        item.determinations !== normalizedDeterminations
+    );
+
+    if (!shouldUpdate) {
+      return;
+    }
+
+    const updatedItems = sublevel.items.map((item) => {
+      if (!item.isFixed || item.isCustomDeterminations) {
+        return item;
+      }
+
+      return {
+        ...item,
+        determinations: normalizedDeterminations,
+        isCustomDeterminations:
+          normalizedDeterminations > 0 ? false : item.isCustomDeterminations
+      };
+    });
+
+    onChange({ ...sublevel, items: updatedItems });
+  }, [
+    globalDeterminations,
+    isInfrastructureSublevel,
+    onChange,
+    sublevel
+  ]);
 
   const handleAdd = () => {
     setError(null);
@@ -309,6 +369,10 @@ function SharedResourceSublevelSection({
       }
 
       if (field === "concept") {
+        if (item.isFixed && !item.allowConceptEdit) {
+          return item;
+        }
+
         return { ...item, concept: value };
       }
 
@@ -337,6 +401,12 @@ function SharedResourceSublevelSection({
   };
 
   const handleDelete = (id: string) => {
+    const target = sublevel.items.find((item) => item.id === id);
+
+    if (target?.isFixed) {
+      return;
+    }
+
     onChange({
       ...sublevel,
       items: sublevel.items.filter((item) => item.id !== id)
@@ -345,6 +415,9 @@ function SharedResourceSublevelSection({
 
   const isMaintenanceSublevel = sublevel.id === maintenanceSublevelId;
   const tooltip = sublevelTooltips[sublevel.id];
+
+  const showGlobalDeterminationsWarning =
+    isInfrastructureSublevel && globalDeterminations <= 0;
 
   return (
     <section
@@ -424,10 +497,11 @@ function SharedResourceSublevelSection({
                   <input
                     type="text"
                     value={item.concept}
+                    disabled={item.isFixed && !item.allowConceptEdit}
                     onChange={(event) =>
                       handleFieldChange(item.id, "concept", event.target.value)
                     }
-                    className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
+                    className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                   />
                 </td>
                 <td className="px-3 py-2">
@@ -473,19 +547,32 @@ function SharedResourceSublevelSection({
                   )}
                 </td>
                 <td className="px-3 py-2">
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(item.id)}
-                    className="text-sm font-medium text-rose-600 hover:text-rose-500"
-                  >
-                    Eliminar
-                  </button>
+                  {item.isFixed ? (
+                    <span className="text-xs font-medium text-slate-400">
+                      Fijo
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(item.id)}
+                      className="text-sm font-medium text-rose-600 hover:text-rose-500"
+                    >
+                      Eliminar
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {showGlobalDeterminationsWarning ? (
+        <p className="text-sm text-amber-700">
+          Definí la base global de prorrateo (DM) para calcular los costos
+          unitarios de infraestructura.
+        </p>
+      ) : null}
 
       <form
         className={`grid gap-3 rounded-lg border border-dashed p-4 text-sm md:grid-cols-4 ${appearance.form}`}
