@@ -108,6 +108,8 @@ export interface SharedResourceCostItem {
   monthlyCost: number;
   determinations: number;
   isCustomDeterminations?: boolean;
+  isFixed?: boolean;
+  allowConceptEdit?: boolean;
 }
 
 export interface SharedResourceSublevelState {
@@ -122,6 +124,44 @@ export interface SharedResourceSublevelState {
   description: string;
   type: "shared-resource";
   items: SharedResourceCostItem[];
+}
+
+const infrastructureBaseItems = [
+  { id: "energia", concept: "Energía", allowConceptEdit: false },
+  { id: "gas", concept: "Gas", allowConceptEdit: false },
+  { id: "agua", concept: "Agua", allowConceptEdit: false },
+  { id: "limpieza", concept: "Limpieza", allowConceptEdit: false },
+  {
+    id: "administracion",
+    concept: "Administración",
+    allowConceptEdit: false
+  },
+  {
+    id: "comunicaciones",
+    concept: "Comunicaciones",
+    allowConceptEdit: false
+  },
+  {
+    id: "otro",
+    concept: "Otro (especificar)",
+    allowConceptEdit: true
+  }
+] as const;
+
+export function createInfrastructureDefaultItems(
+  determinations: number
+): SharedResourceCostItem[] {
+  const normalizedDeterminations = determinations > 0 ? determinations : 0;
+
+  return infrastructureBaseItems.map((item) => ({
+    id: item.id,
+    concept: item.concept,
+    monthlyCost: 0,
+    determinations: normalizedDeterminations,
+    isCustomDeterminations: normalizedDeterminations > 0 ? false : undefined,
+    isFixed: true,
+    allowConceptEdit: item.allowConceptEdit
+  }));
 }
 
 export interface IndirectEquipmentItem {
@@ -405,13 +445,39 @@ export function calculateDirectGroupLevel(
 
 export function calculateIndirectGroupLevel(level: IndirectLevelGroupState): {
   subtotal: number;
-  breakdown: { id: IndirectSublevelKey; name: string; subtotal: number }[];
+  breakdown: Array<
+    {
+      id: IndirectSublevelKey;
+      name: string;
+      subtotal: number;
+    } & {
+      breakdown?: { id: string; name: string; subtotal: number }[];
+    }
+  >;
 } {
-  const breakdown = level.sublevels.map((sublevel) => ({
-    id: sublevel.id,
-    name: sublevel.name,
-    subtotal: calculateIndirectSublevelSubtotal(sublevel)
-  }));
+  const breakdown = level.sublevels.map((sublevel) => {
+    if (sublevel.id === "infraestructura" && sublevel.type === "shared-resource") {
+      const itemBreakdown = sublevel.items.map((item) => ({
+        id: item.id,
+        name: item.concept,
+        subtotal: calculateSharedResourceItemCost(item)
+      }));
+      const subtotal = itemBreakdown.reduce((acc, item) => acc + item.subtotal, 0);
+
+      return {
+        id: sublevel.id,
+        name: sublevel.name,
+        subtotal,
+        breakdown: itemBreakdown
+      };
+    }
+
+    return {
+      id: sublevel.id,
+      name: sublevel.name,
+      subtotal: calculateIndirectSublevelSubtotal(sublevel)
+    };
+  });
 
   const subtotal = breakdown.reduce((acc, item) => acc + item.subtotal, 0);
 
