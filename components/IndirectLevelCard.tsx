@@ -14,7 +14,7 @@ import {
   calculateSharedResourceItemCost,
   currencyFormatter
 } from "@/lib/cost-calculation";
-import { ManualOverrideIcon, PlusIcon } from "./icons";
+import { InfoIcon, ManualOverrideIcon, PlusIcon } from "./icons";
 
 interface IndirectLevelCardProps {
   level: IndirectLevelGroupState;
@@ -216,6 +216,8 @@ interface SharedResourceSublevelSectionProps {
   useGlobalDeterminations: boolean;
 }
 
+const maintenanceSublevelId = "mantenimientoEquipamiento";
+
 function SharedResourceSublevelSection({
   sublevel,
   onChange,
@@ -329,6 +331,8 @@ function SharedResourceSublevelSection({
     });
   };
 
+  const isMaintenanceSublevel = sublevel.id === maintenanceSublevelId;
+
   return (
     <section
       className={`space-y-3 rounded-xl border p-4 ${appearance.container}`}
@@ -345,6 +349,18 @@ function SharedResourceSublevelSection({
         <p className={`text-sm ${appearance.description}`}>
           {sublevel.description}
         </p>
+        {isMaintenanceSublevel ? (
+          <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50/80 p-3 text-sm text-amber-900">
+            <InfoIcon
+              className="mt-0.5 h-4 w-4 shrink-0 text-amber-600"
+              aria-label="Ejemplos de mantenimiento"
+              title="Ejemplos: limpieza, ajustes, repuestos"
+            />
+            <p className="leading-snug">
+              No incluir calibración ya contemplada en 1.3 Equipamiento específico. Aquí solo mantenimiento preventivo/correctivo (honorarios + repuestos).
+            </p>
+          </div>
+        ) : null}
       </header>
 
       <div className="overflow-x-auto">
@@ -456,6 +472,18 @@ function SharedResourceSublevelSection({
           handleAdd();
         }}
       >
+        {isMaintenanceSublevel ? (
+          <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50/70 p-3 text-amber-900 md:col-span-4">
+            <InfoIcon
+              className="mt-0.5 h-4 w-4 shrink-0 text-amber-600"
+              aria-label="Ejemplos de mantenimiento"
+              title="Ejemplos: limpieza, ajustes, repuestos"
+            />
+            <p className="text-sm leading-snug">
+              No incluir calibración ya contemplada en 1.3 Equipamiento específico. Aquí solo mantenimiento preventivo/correctivo (honorarios + repuestos).
+            </p>
+          </div>
+        ) : null}
         <label className="flex flex-col space-y-1 md:col-span-2">
           <span>Concepto</span>
           <input
