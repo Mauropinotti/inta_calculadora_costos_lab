@@ -15,31 +15,106 @@ los supuestos a un archivo JSON para documentar la estimación.
 
 ## Desarrollo local
 
-1. Instala las dependencias
+1. Instala las dependencias (requiere acceso al registro de npm).
 
    ```bash
    npm install
    ```
 
-2. Inicia el servidor de desarrollo
+2. Copia el archivo de ejemplo de variables de entorno y completa los valores
+   sensibles.
+
+   ```bash
+   cp .env.local.example .env.local
+   ```
+
+3. Ejecuta las migraciones o sincroniza el esquema con la base de datos Neon.
+
+   ```bash
+   npm run db:push
+   # o
+   npm run db:migrate
+   ```
+
+4. Opcional: inspecciona las tablas con la interfaz de Drizzle.
+
+   ```bash
+   npm run db:studio
+   ```
+
+5. Ejecuta el seeder para poblar categorías de infraestructura y valores hora
+   de ejemplo.
+
+   ```bash
+   npm run db:seed
+   ```
+
+6. Inicia el servidor de desarrollo.
 
    ```bash
    npm run dev
    ```
 
-3. Abre `http://localhost:3000` en el navegador para ver la calculadora.
+7. Abre `http://localhost:3000` en el navegador para ver la calculadora.
 
-4. Ejecuta el análisis estático
+8. Ejecuta el análisis estático.
 
    ```bash
    npm run lint
    ```
 
-5. Ejecuta la suite de pruebas
+9. Ejecuta la suite de pruebas.
 
    ```bash
    npm test
    ```
+
+   > Algunas pruebas de integración quedan marcadas como `skip` por defecto
+   > porque requieren una base de datos Neon accesible y un servidor Next.js en
+   > ejecución.
+
+## Configuración de la base de datos
+
+- **Motor**: PostgreSQL (Neon serverless) con conexión HTTP.
+- **ORM**: Drizzle ORM + drizzle-kit para migraciones.
+- **URL**: definida en `DATABASE_URL` (debe incluir `sslmode=require`).
+- **Migraciones**: se generan a partir de `src/db/schema.ts` y se almacenan en
+  el directorio `drizzle/`.
+- **Seeds**: `src/db/seeds.ts` inserta categorías de infraestructura base y dos
+  valores hora de referencia.
+
+### Variables de entorno relevantes
+
+| Variable       | Descripción                                                 |
+| -------------- | ----------------------------------------------------------- |
+| `DATABASE_URL` | Cadena de conexión de Neon (con `sslmode=require`).         |
+| `NODE_ENV`     | `development`, `production` o `test`.                       |
+| `LOG_LEVEL`    | Nivel mínimo del logger (`error`, `warn`, `info`, `debug`). |
+
+## Endpoints REST
+
+- `GET /api/health`: verifica la conectividad a la base de datos y presencia de
+  tablas críticas (cabeceras `cache-control: no-store`).
+- `GET /api/quotes`: listado paginado de cotizaciones (`page`, `limit`,
+  `search`).
+- `POST /api/quotes`: crea una cotización en estado `draft` (valida con Zod).
+- `GET /api/quotes/:id`: obtiene la cotización con sus líneas y agregados.
+- `PATCH /api/quotes/:id`: actualiza campos editables de la cotización.
+- `DELETE /api/quotes/:id`: elimina la cotización y sus líneas asociadas.
+- `GET /api/hourly-rates`: lista valores hora (filtro `?active=true`).
+- `POST /api/hourly-rates`: crea o actualiza un valor hora por `profile_code`
+  + `valid_from`.
+- `GET /api/infra`: devuelve las categorías de infraestructura semilladas.
+
+Todos los endpoints usan runtime `nodejs`, validación con Zod, rate limiting en
+operaciones de escritura y logging con ofuscación de secretos.
+
+## Observabilidad y salud
+
+- Logger minimalista (`src/lib/logger.ts`) con niveles y redactado de secretos.
+- `src/db/health.ts` ejecuta `SELECT 1` y verifica tablas clave.
+- En desarrollo, `src/lib/startup.ts` realiza una verificación inicial y
+  asegura que existan las seis categorías base de infraestructura.
 
 ## Despliegue en Vercel
 
