@@ -214,9 +214,15 @@ function HomePageContent() {
   const [levels, setLevels] = useState<LevelState[]>(() =>
     createInitialLevels(DEFAULT_GLOBAL_DETERMINATIONS)
   );
+  const [serviceName, setServiceName] = useState("");
+  const [laboratoryName, setLaboratoryName] = useState("");
   const {
     state: exchangeRateState
   } = useExchangeRate();
+  const quoteDateISO = useMemo(
+    () => new Date().toISOString().slice(0, 10),
+    []
+  );
 
   const { totals, orderedTotals, grandTotal } = useMemo(
     () => calculateTotals(levels, { exchangeRate: exchangeRateState.rate }),
@@ -403,6 +409,54 @@ function HomePageContent() {
       </div>
 
       <div id="niveles" className="space-y-6 scroll-mt-24">
+        <section className="rounded-3xl border border-inta-blue/60 bg-white/90 p-6 shadow-sm">
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-semibold text-inta-blue">
+                Información del servicio a cotizar
+              </h2>
+              <p className="text-sm text-slate-600">
+                Completa los datos generales del servicio para personalizar el resumen.
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="flex flex-col gap-1 text-sm text-slate-700">
+                <span className="font-medium text-slate-800">
+                  Nombre del servicio a cotizar
+                </span>
+                <input
+                  type="text"
+                  value={serviceName}
+                  onChange={(event) => setServiceName(event.target.value)}
+                  placeholder="Ej.: Análisis microbiológico de alimentos"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-inta-blue focus:outline-none focus:ring-2 focus:ring-inta-blue/40"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1 text-sm text-slate-700">
+                <span className="font-medium text-slate-800">
+                  Nombre del laboratorio que cotiza
+                </span>
+                <input
+                  type="text"
+                  value={laboratoryName}
+                  onChange={(event) => setLaboratoryName(event.target.value)}
+                  placeholder="Ej.: Laboratorio de Calidad Agroalimentaria"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-inta-blue focus:outline-none focus:ring-2 focus:ring-inta-blue/40"
+                />
+              </label>
+            </div>
+
+            <p className="text-xs text-slate-500">
+              Fecha de cotización: {" "}
+              <span className="font-semibold text-slate-700">
+                {new Date(quoteDateISO).toLocaleDateString("es-AR")}
+              </span>
+            </p>
+          </div>
+        </section>
+
         {levels.map((level, index) => {
           if (level.type === "direct-group") {
             return (
@@ -481,6 +535,9 @@ function HomePageContent() {
           orderedTotals={orderedTotals}
           grandTotal={grandTotal}
           exchangeRate={exchangeRateState}
+          serviceName={serviceName}
+          laboratoryName={laboratoryName}
+          quoteDateISO={quoteDateISO}
         />
       </div>
     </div>

@@ -47,6 +47,9 @@ describe("SummaryPanel", () => {
         orderedTotals={orderedTotals}
         grandTotal={1200}
         exchangeRate={exchangeRate}
+        serviceName="Servicio de ensayo"
+        laboratoryName="Laboratorio INTa"
+        quoteDateISO="2024-05-20"
       />
     );
 
@@ -113,6 +116,9 @@ describe("SummaryPanel", () => {
         orderedTotals={orderedTotals}
         grandTotal={grandTotal}
         exchangeRate={exchangeRate}
+        serviceName="Servicio de ensayo"
+        laboratoryName="Laboratorio INTa"
+        quoteDateISO="2024-05-20"
       />
     );
 
