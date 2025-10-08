@@ -14,6 +14,26 @@ exports[`SummaryPanel presenta la desagregación del equipamiento manteniendo el
           Visualiza el aporte parcial de cada nivel y el costo total estimado del servicio.
         </p>
       </div>
+      <div class="space-y-2 rounded-lg bg-inta-blue/5 p-3 text-xs text-slate-700">
+        <p>
+          Servicio:
+          <span class="font-medium text-slate-900">
+            Servicio de ensayo
+          </span>
+        </p>
+        <p>
+          Laboratorio:
+          <span class="font-medium text-slate-900">
+            Laboratorio INTa
+          </span>
+        </p>
+        <p>
+          Fecha de cotización:
+          <span class="font-medium text-slate-900">
+            20/5/2024
+          </span>
+        </p>
+      </div>
       <div class="space-y-1 rounded-lg bg-slate-50/80 p-3 text-xs text-slate-600">
         <p>
           TC aplicado:
@@ -35,6 +55,25 @@ exports[`SummaryPanel presenta la desagregación del equipamiento manteniendo el
             Tabla local (2024-01-01 · importación)
           </span>
         </p>
+      </div>
+      <div class="flex flex-col gap-2 pt-2 text-xs text-slate-600">
+        <span class="font-medium text-slate-700">
+          Exportar resumen:
+        </span>
+        <div class="flex flex-wrap gap-2">
+          <button
+            class="rounded-lg border border-inta-blue bg-white px-3 py-1.5 font-medium text-inta-blue transition hover:bg-inta-blue/10"
+            type="button"
+          >
+            Descargar JSON
+          </button>
+          <button
+            class="rounded-lg border border-inta-blue bg-white px-3 py-1.5 font-medium text-inta-blue transition hover:bg-inta-blue/10"
+            type="button"
+          >
+            Descargar CSV
+          </button>
+        </div>
       </div>
     </div>
     <div class="flex-1 space-y-4">
