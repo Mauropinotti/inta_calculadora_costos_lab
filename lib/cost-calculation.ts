@@ -111,6 +111,20 @@ export interface SharedResourceCostItem {
   isCustomDeterminations?: boolean;
   isFixed?: boolean;
   allowConceptEdit?: boolean;
+  maintenanceDetails?: {
+    ctm: number;
+    ctmAdjusted: number;
+    cam: number;
+    months: number;
+    detMes: number;
+    dispFactor: number;
+    ipcFactor?: number | null;
+    period: {
+      start: string;
+      end: string;
+    };
+    ipd: number;
+  };
 }
 
 export interface SharedResourceSublevelState {
