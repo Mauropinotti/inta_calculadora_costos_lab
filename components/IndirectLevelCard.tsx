@@ -303,6 +303,19 @@ export function IndirectLevelCard({
             levelTwoSublevels.has(sublevel.id);
 
           if (sublevel.type === "shared-resource") {
+            if (sublevel.id === maintenanceSublevelId) {
+              return (
+                <MaintenanceEquipmentSection
+                  key={sublevel.id}
+                  sublevel={sublevel}
+                  onChange={onSublevelChange}
+                  appearance={appearance}
+                  globalDeterminations={globalDeterminations}
+                  useGlobalDeterminations={useGlobalDeterminations}
+                />
+              );
+            }
+
             return (
               <SharedResourceSublevelSection
                 key={sublevel.id}
@@ -397,18 +410,6 @@ function SharedResourceSublevelSection({
   globalDeterminations,
   useGlobalDeterminations
 }: SharedResourceSublevelSectionProps) {
-  if (sublevel.id === maintenanceSublevelId) {
-    return (
-      <MaintenanceEquipmentSection
-        sublevel={sublevel}
-        onChange={onChange}
-        appearance={appearance}
-        globalDeterminations={globalDeterminations}
-        useGlobalDeterminations={useGlobalDeterminations}
-      />
-    );
-  }
-
   const subtotal = useMemo(
     () => calculateIndirectSublevelSubtotal(sublevel),
     [sublevel]
