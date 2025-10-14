@@ -33,37 +33,34 @@ const supplyUnitOptions = ["g", "mg", "kg", "mL", "L", "unidad"] as const;
 
 const supplyUnitEnum = z.enum(supplyUnitOptions);
 
+const finiteNumber = (
+  params: { invalid_type_error: string },
+  message = "Ingresa un número válido"
+) =>
+  z.number(params).superRefine((value, ctx) => {
+    if (!Number.isFinite(value)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message });
+    }
+  });
+
 const supplyCalculatorSchema = z.object({
   insumo: z.string().min(1, "Ingresa el nombre del insumo"),
   uomBase: supplyUnitEnum,
   formatoPresentacion: z
     .string()
     .min(1, "Describe el formato de presentación (pote, frasco, etc.)"),
-  cantidadPresentacion: z
-    .number({
+  cantidadPresentacion: finiteNumber(
+    {
       invalid_type_error: "Indica la cantidad del formato de presentación"
-    })
-    .gt(0, "La cantidad del formato debe ser mayor a cero")
-    .refine((value) => Number.isFinite(value), {
-      message: "Ingresa un número válido"
-    }),
-  precioPresentacion: z
-    .number({
-      invalid_type_error: "Indica el precio del formato de compra"
-    })
-    .gt(0, "El precio debe ser mayor a cero")
-    .refine((value) => Number.isFinite(value), {
-      message: "Ingresa un número válido"
-    }),
+    }
+  ).gt(0, "La cantidad del formato debe ser mayor a cero"),
+  precioPresentacion: finiteNumber({
+    invalid_type_error: "Indica el precio del formato de compra"
+  }).gt(0, "El precio debe ser mayor a cero"),
   uomUso: supplyUnitEnum,
-  cantidadUsada: z
-    .number({
-      invalid_type_error: "Indica la cantidad utilizada en la determinación"
-    })
-    .min(0, "La cantidad debe ser mayor o igual a cero")
-    .refine((value) => Number.isFinite(value), {
-      message: "Ingresa un número válido"
-    }),
+  cantidadUsada: finiteNumber({
+    invalid_type_error: "Indica la cantidad utilizada en la determinación"
+  }).min(0, "La cantidad debe ser mayor o igual a cero"),
   mermaFactor: z
     .preprocess((value) => {
       if (
@@ -76,13 +73,10 @@ const supplyCalculatorSchema = z.object({
       }
       return value;
     },
-    z
-      .number({ invalid_type_error: "Ingresa un valor entre 0 y 1" })
-      .refine((value) => Number.isFinite(value), {
-        message: "Ingresa un valor entre 0 y 1"
-      })
+    finiteNumber({ invalid_type_error: "Ingresa un valor entre 0 y 1" }, "Ingresa un valor entre 0 y 1")
       .min(0, "La merma no puede ser negativa")
-      .max(1, "La merma no puede superar 1"))
+      .max(1, "La merma no puede superar 1")
+    )
     .optional()
 });
 
