@@ -66,6 +66,9 @@ const sanitizeNaN = <T extends z.ZodTypeAny>(schema: T) =>
 
 const maintenanceFormSchema = z
   .object({
+    equipmentName: z
+      .string({ required_error: "Ingresá el equipo a mantener" })
+      .min(1, "Ingresá el equipo a mantener"),
     ctm: sanitizeNaN(
       z
         .number({
@@ -368,6 +371,7 @@ export function IndirectLevelCard({
           </dl>
         </section>
       </div>
+
     </section>
   );
 }
@@ -385,9 +389,11 @@ interface MaintenanceEquipmentSectionProps
 
 const maintenanceSublevelId = "mantenimientoEquipamiento";
 const infrastructureSublevelId = "infraestructura";
-const maintenanceResultItemId = "maintenance-calculation";
 const numberFormatter = new Intl.NumberFormat("es-AR", {
   maximumFractionDigits: 4
+});
+const dateFormatter = new Intl.DateTimeFormat("es-AR", {
+  dateStyle: "medium"
 });
 
 const sublevelTooltips: Partial<
@@ -538,7 +544,7 @@ function SharedResourceSublevelSection({
 
   const handleFieldChange = (
     id: string,
-    field: keyof SharedResourceCostItem,
+    field: "concept" | "monthlyCost" | "determinations",
     value: string
   ) => {
     const updated = sublevel.items.map((item) => {
@@ -870,6 +876,7 @@ function MaintenanceEquipmentSection({
     resolver: zodResolver(maintenanceFormSchema),
     mode: "onChange",
     defaultValues: {
+      equipmentName: "",
       dispFactor: 1,
       ipcFactor: 1,
       detMes:
@@ -987,57 +994,80 @@ function MaintenanceEquipmentSection({
     };
   }, [ctm, fechaInicio, fechaFin, detMes, dispFactor, ipcFactor]);
 
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   useEffect(() => {
+    setSubmitError(null);
+  }, [ctm, fechaInicio, fechaFin, detMes, dispFactor, ipcFactor]);
+
+  const handleAddMaintenance = handleSubmit((data) => {
     if (
       !results.ready ||
       !results.cmm ||
       !results.effectiveDeterminations ||
-      results.ipd === null
+      results.ipd === null ||
+      !results.ctmAdjusted ||
+      !results.months
     ) {
-      if (sublevel.items.length > 0) {
-        onChange({ ...sublevel, items: [] });
-      }
+      setSubmitError(
+        "Completá los campos obligatorios para calcular el mantenimiento antes de agregarlo."
+      );
       return;
     }
 
-    const monthlyCostValue = results.cmm
+    const monthsValue = results.months
+      .toDecimalPlaces(6, Decimal.ROUND_HALF_UP)
+      .toNumber();
+    const cmmValue = results.cmm
       .toDecimalPlaces(6, Decimal.ROUND_HALF_UP)
       .toNumber();
     const determinationsValue = results.effectiveDeterminations
       .toDecimalPlaces(6, Decimal.ROUND_HALF_UP)
       .toNumber();
+    const ctmAdjustedValue = results.ctmAdjusted
+      .toDecimalPlaces(6, Decimal.ROUND_HALF_UP)
+      .toNumber();
+    const camValue = results.cam
+      ? results.cam.toDecimalPlaces(6, Decimal.ROUND_HALF_UP).toNumber()
+      : cmmValue * 12;
+    const ipdValue = results.ipd
+      ? results.ipd.toDecimalPlaces(6, Decimal.ROUND_HALF_UP).toNumber()
+      : 0;
 
-    const currentItem = sublevel.items.find(
-      (item) => item.id === maintenanceResultItemId
-    );
+    const newItem: SharedResourceCostItem = {
+      id: `maintenance-${Date.now()}-${Math.random()
+        .toString(16)
+        .slice(2)}`,
+      concept: data.equipmentName.trim(),
+      monthlyCost: cmmValue,
+      determinations: determinationsValue,
+      isFixed: true,
+      maintenanceDetails: {
+        ctm: data.ctm,
+        ctmAdjusted: ctmAdjustedValue,
+        cam: camValue,
+        months: monthsValue,
+        detMes: data.detMes,
+        dispFactor: data.dispFactor,
+        ipcFactor: data.ipcFactor ?? null,
+        period: {
+          start: data.fechaInicio.toISOString(),
+          end: data.fechaFin.toISOString()
+        },
+        ipd: ipdValue
+      }
+    };
 
-    if (
-      currentItem &&
-      Math.abs(currentItem.monthlyCost - monthlyCostValue) < 1e-6 &&
-      Math.abs(currentItem.determinations - determinationsValue) < 1e-6
-    ) {
-      return;
-    }
+    onChange({ ...sublevel, items: [...sublevel.items, newItem] });
+    setSubmitError(null);
 
-    onChange({
-      ...sublevel,
-      items: [
-        {
-          id: maintenanceResultItemId,
-          concept: "Prorrateo mantenimiento de equipamiento",
-          monthlyCost: monthlyCostValue,
-          determinations: determinationsValue,
-          isFixed: true
-        }
-      ]
+    setValue("equipmentName", "", {
+      shouldDirty: false,
+      shouldValidate: false
     });
-  }, [onChange, results, sublevel]);
-
-  const handleLog = handleSubmit((data) => {
-    console.log(
-      "Nivel 2 c.3) Mantenimiento de Equipamiento (payload validado)",
-      data
-    );
+    resetField("ctm");
+    resetField("fechaInicio");
+    resetField("fechaFin");
   });
 
   const monthsDisplay =
@@ -1080,6 +1110,15 @@ function MaintenanceEquipmentSection({
 
   const showGlobalDeterminationsWarning =
     useGlobalDeterminations && globalDeterminations <= 0;
+  const maintenanceItems = sublevel.items;
+  const maintenanceTableEmpty = maintenanceItems.length === 0;
+
+  const handleDeleteMaintenance = (id: string) => {
+    onChange({
+      ...sublevel,
+      items: sublevel.items.filter((item) => item.id !== id)
+    });
+  };
 
   return (
     <section
@@ -1119,8 +1158,27 @@ function MaintenanceEquipmentSection({
       <div className="grid gap-6 lg:grid-cols-2">
         <form
           className={`space-y-4 rounded-lg border p-4 ${appearance.form}`}
-          onSubmit={handleLog}
+          onSubmit={handleAddMaintenance}
         >
+          <label className="flex flex-col space-y-1">
+            <span>Equipo a mantener</span>
+            <input
+              type="text"
+              placeholder="Centrífuga refrigerada"
+              className="rounded-md border border-slate-300 px-3 py-2 focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
+              {...register("equipmentName")}
+            />
+            {errors.equipmentName ? (
+              <span className="text-xs text-rose-600">
+                {errors.equipmentName.message}
+              </span>
+            ) : (
+              <span className="text-xs text-emerald-700">
+                Identificá el equipo o contrato de mantenimiento que estás cargando.
+              </span>
+            )}
+          </label>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="flex flex-col space-y-1">
               <span>CTM (ARS)</span>
@@ -1143,7 +1201,14 @@ function MaintenanceEquipmentSection({
               )}
             </label>
             <label className="flex flex-col space-y-1">
-              <span>Factor de disponibilidad (0 a 1)</span>
+              <span className="flex items-center gap-2" title="Proporción del tiempo operativo del equipo respecto del período analizado. 1 equivale al 100% de disponibilidad.">
+                Factor de disponibilidad (0 a 1)
+                <InfoIcon
+                  className="h-4 w-4 text-emerald-700"
+                  aria-label="¿Qué es el factor de disponibilidad?"
+                  title="Porcentaje de disponibilidad del equipo durante el período: 1 = 100%, 0,8 = 80%, etc."
+                />
+              </span>
               <input
                 type="number"
                 min={0}
@@ -1277,21 +1342,33 @@ function MaintenanceEquipmentSection({
             )}
           </label>
 
-          <div className="flex justify-end">
+          <div className="flex flex-col items-end gap-2">
             <button
               type="submit"
               className="rounded-md bg-inta-blue px-3 py-2 text-sm font-medium text-white transition hover:bg-inta-blue/90 disabled:cursor-not-allowed disabled:bg-slate-300"
-              disabled={!isValid}
+              disabled={
+                !isValid ||
+                !results.ready ||
+                !results.cmm ||
+                !results.effectiveDeterminations ||
+                results.ipd === null
+              }
             >
-              Registrar payload en consola
+              Agregar mantenimiento de equipo
             </button>
+            {submitError ? (
+              <span className="text-xs text-rose-600">{submitError}</span>
+            ) : null}
           </div>
         </form>
 
         <aside className={`space-y-4 rounded-lg border p-4 ${appearance.form}`}>
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm">
-              <span className="font-medium text-emerald-900">
+              <span
+                className="font-medium text-emerald-900"
+                title="Meses completos más fracción proporcional según los días restantes entre las fechas ingresadas."
+              >
                 Meses prorrateados exactos (M)
               </span>
               <span className="font-semibold text-emerald-800">
@@ -1299,13 +1376,21 @@ function MaintenanceEquipmentSection({
               </span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="font-medium text-emerald-900">CTM ajustado</span>
+              <span
+                className="font-medium text-emerald-900"
+                title="CTM ajustado = CTM × factor de IPC (si se ingresó)."
+              >
+                CTM ajustado
+              </span>
               <span className="font-semibold text-emerald-800">
                 {ctmAdjustedDisplay}
               </span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="font-medium text-emerald-900">
+              <span
+                className="font-medium text-emerald-900"
+                title="CMM = CTM ajustado ÷ meses prorrateados (M)."
+              >
                 Costo mensual de mantenimiento (CMM)
               </span>
               <span className="font-semibold text-emerald-800">
@@ -1313,7 +1398,10 @@ function MaintenanceEquipmentSection({
               </span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="font-medium text-emerald-900">
+              <span
+                className="font-medium text-emerald-900"
+                title="CAM = CMM × 12."
+              >
                 Costo anual de mantenimiento (CAM)
               </span>
               <span className="font-semibold text-emerald-800">
@@ -1321,7 +1409,10 @@ function MaintenanceEquipmentSection({
               </span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="font-medium text-emerald-900">
+              <span
+                className="font-medium text-emerald-900"
+                title="Determinaciones efectivas = detMes × factor de disponibilidad."
+              >
                 Determinaciones efectivas (detMes × dispFactor)
               </span>
               <span className="font-semibold text-emerald-800">
@@ -1329,7 +1420,10 @@ function MaintenanceEquipmentSection({
               </span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="font-medium text-emerald-900">
+              <span
+                className="font-medium text-emerald-900"
+                title="IPD = CMM ÷ determinaciones efectivas."
+              >
                 Incidencia por determinación (IPD)
               </span>
               <span
@@ -1357,6 +1451,163 @@ function MaintenanceEquipmentSection({
           ) : null}
         </aside>
       </div>
+
+      <section className={`space-y-3 rounded-lg border p-4 ${appearance.form}`}>
+        <header className="flex flex-wrap items-center justify-between gap-2">
+          <h4 className={`text-base font-semibold ${appearance.header}`}>
+            Equipos cargados
+          </h4>
+          <span className="text-xs text-emerald-700">
+            Cada fila se suma al subtotal del subnivel.
+          </span>
+        </header>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200 text-sm">
+            <thead className={`${appearance.tableHead} text-left`}>
+              <tr>
+                <th className={`px-3 py-2 font-medium ${appearance.header}`}>
+                  Equipo
+                </th>
+                <th className={`px-3 py-2 font-medium ${appearance.header}`}>
+                  Período analizado
+                </th>
+                <th className={`px-3 py-2 font-medium ${appearance.header}`}>
+                  CTM ajustado (ARS)
+                </th>
+                <th className={`px-3 py-2 font-medium ${appearance.header}`}>
+                  Meses prorrateados (M)
+                </th>
+                <th className={`px-3 py-2 font-medium ${appearance.header}`}>
+                  CMM (ARS/mes)
+                </th>
+                <th className={`px-3 py-2 font-medium ${appearance.header}`}>
+                  Determinaciones efectivas
+                </th>
+                <th className={`px-3 py-2 font-medium ${appearance.header}`}>
+                  IPD (ARS/det)
+                </th>
+                <th className={`px-3 py-2 font-medium ${appearance.header}`}>
+                  Acciones
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {maintenanceTableEmpty ? (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="px-3 py-6 text-center text-sm text-slate-500"
+                  >
+                    Aún no se cargaron mantenimientos. Utilizá el formulario para
+                    agregar equipos.
+                  </td>
+                </tr>
+              ) : null}
+              {maintenanceItems.map((item) => {
+                const details = item.maintenanceDetails;
+                let periodLabel = "—";
+                let periodTitle: string | undefined;
+
+                if (details) {
+                  const startDate = new Date(details.period.start);
+                  const endDate = new Date(details.period.end);
+                  const startValid = !Number.isNaN(startDate.getTime());
+                  const endValid = !Number.isNaN(endDate.getTime());
+
+                  if (startValid && endValid) {
+                    const startLabel = dateFormatter.format(startDate);
+                    const endLabel = dateFormatter.format(endDate);
+                    periodLabel = `${startLabel} → ${endLabel}`;
+                    const detMesLabel = numberFormatter.format(details.detMes);
+                    const dispLabel = details.dispFactor.toLocaleString("es-AR", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    });
+                    periodTitle = `Período analizado: ${startLabel} al ${endLabel}. detMes promedio: ${detMesLabel}. Factor de disponibilidad: ${dispLabel}.`;
+                    if (details.ipcFactor && details.ipcFactor !== 1) {
+                      periodTitle += ` Ajuste IPC aplicado: ×${details.ipcFactor}.`;
+                    }
+                  }
+                }
+
+                const ctmAdjustedCell =
+                  details && Number.isFinite(details.ctmAdjusted)
+                    ? currencyFormatter.format(details.ctmAdjusted)
+                    : "—";
+                const monthsCell =
+                  details && Number.isFinite(details.months)
+                    ? numberFormatter.format(details.months)
+                    : "—";
+                const cmmCell = Number.isFinite(item.monthlyCost)
+                  ? currencyFormatter.format(item.monthlyCost)
+                  : "—";
+                const determinationsCell = Number.isFinite(item.determinations)
+                  ? numberFormatter.format(item.determinations)
+                  : "—";
+                const ipdFromItem =
+                  item.determinations > 0
+                    ? item.monthlyCost / item.determinations
+                    : 0;
+                const ipdCell =
+                  details && Number.isFinite(details.ipd)
+                    ? currencyFormatter.format(details.ipd)
+                    : currencyFormatter.format(ipdFromItem);
+
+                return (
+                  <tr key={item.id}>
+                    <td className="px-3 py-2 font-medium text-slate-700">
+                      {item.concept}
+                    </td>
+                    <td className="px-3 py-2" title={periodTitle}>
+                      {periodLabel}
+                    </td>
+                    <td
+                      className="px-3 py-2"
+                      title="CTM ajustado = CTM × factor de IPC (si se ingresó)."
+                    >
+                      {ctmAdjustedCell}
+                    </td>
+                    <td
+                      className="px-3 py-2"
+                      title="Meses prorrateados exactos (M)."
+                    >
+                      {monthsCell}
+                    </td>
+                    <td
+                      className="px-3 py-2"
+                      title="CMM = CTM ajustado ÷ meses prorrateados (M)."
+                    >
+                      {cmmCell}
+                    </td>
+                    <td
+                      className="px-3 py-2"
+                      title="Determinaciones efectivas = detMes × factor de disponibilidad."
+                    >
+                      {determinationsCell}
+                    </td>
+                    <td
+                      className="px-3 py-2"
+                      title="IPD = CMM ÷ determinaciones efectivas."
+                    >
+                      {ipdCell}
+                    </td>
+                    <td className="px-3 py-2">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteMaintenance(item.id)}
+                        className="text-sm font-medium text-rose-600 hover:text-rose-500"
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </section>
   );
 }
