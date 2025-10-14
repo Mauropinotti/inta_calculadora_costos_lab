@@ -864,6 +864,7 @@ function MaintenanceEquipmentSection({
     handleSubmit,
     watch,
     setValue,
+    resetField,
     formState: { errors, isValid }
   } = useForm<MaintenanceFormValues>({
     resolver: zodResolver(maintenanceFormSchema),
@@ -889,12 +890,9 @@ function MaintenanceEquipmentSection({
         shouldValidate: true
       });
     } else {
-      setValue("detMes", undefined, {
-        shouldDirty: false,
-        shouldValidate: true
-      });
+      resetField("detMes", { defaultValue: undefined });
     }
-  }, [globalDeterminations, setValue, useGlobalDeterminations]);
+  }, [globalDeterminations, resetField, setValue, useGlobalDeterminations]);
 
   const ctm = watch("ctm");
   const fechaInicio = watch("fechaInicio");
