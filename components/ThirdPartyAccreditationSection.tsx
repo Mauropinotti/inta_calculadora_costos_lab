@@ -7,7 +7,7 @@ import {
   differenceInMonths,
   getDaysInMonth
 } from "date-fns";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -298,6 +298,7 @@ export function ThirdPartyAccreditationSection({
 
   const watchedAccreditations = watch("accreditations");
   const draftValues = watchDraft();
+  const skipNextSyncRef = useRef(false);
 
   const computations = useMemo<AccreditationComputation[]>(() => {
     return watchedAccreditations.map((item, index) => {
@@ -395,6 +396,11 @@ export function ThirdPartyAccreditationSection({
   const ipd = detMesEffective > 0 ? totalMonthly / detMesEffective : null;
 
   useEffect(() => {
+    if (skipNextSyncRef.current) {
+      skipNextSyncRef.current = false;
+      return;
+    }
+
     const determinationsValue = detMesEffective > 0 ? detMesEffective : 0;
 
     if (validComputations.length !== watchedAccreditations.length) {
@@ -511,6 +517,7 @@ export function ThirdPartyAccreditationSection({
       }
     };
 
+    skipNextSyncRef.current = true;
     onChange({ ...sublevel, items: [...sublevel.items, newItem] });
     resetDraft({
       organismo: "",
