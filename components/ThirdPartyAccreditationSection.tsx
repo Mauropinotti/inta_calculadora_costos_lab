@@ -127,6 +127,13 @@ type AccreditationFormValues = {
   }>;
 };
 
+type AccreditationDraftValues = {
+  organismo?: string;
+  cta?: string | number;
+  fechaInicio?: string | Date;
+  fechaFin?: string | Date;
+};
+
 type AccreditationComputation = {
   index: number;
   formId?: string;
@@ -261,9 +268,26 @@ export function ThirdPartyAccreditationSection({
     defaultValues
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, remove } = useFieldArray({
     control,
     name: "accreditations"
+  });
+
+  const {
+    register: registerDraft,
+    handleSubmit: handleSubmitDraft,
+    watch: watchDraft,
+    reset: resetDraft,
+    formState: { errors: draftErrors, isValid: isDraftValid }
+  } = useForm<AccreditationDraftValues>({
+    resolver: zodResolver(accreditationItemSchema),
+    mode: "onChange",
+    defaultValues: {
+      organismo: "",
+      cta: "",
+      fechaInicio: "",
+      fechaFin: ""
+    }
   });
 
   useEffect(() => {
@@ -273,6 +297,7 @@ export function ThirdPartyAccreditationSection({
   const [detMesOverride, setDetMesOverride] = useState("");
 
   const watchedAccreditations = watch("accreditations");
+  const draftValues = watchDraft();
 
   const computations = useMemo<AccreditationComputation[]>(() => {
     return watchedAccreditations.map((item, index) => {
@@ -308,6 +333,41 @@ export function ThirdPartyAccreditationSection({
       } satisfies AccreditationComputation;
     });
   }, [watchedAccreditations]);
+
+  const draftComputation = useMemo(() => {
+    const parsed = accreditationItemSchema.safeParse(draftValues);
+
+    if (!parsed.success) {
+      return null;
+    }
+
+    const data = parsed.data;
+    const monthsResult = calculateExactMonths(data.fechaInicio, data.fechaFin);
+    const months = monthsResult.months;
+    const monthlyCost = months > 0 ? data.cta / months : 0;
+    const annualCost = monthlyCost * 12;
+
+    return {
+      months,
+      monthlyCost,
+      annualCost,
+      shortPeriod: monthsResult.shortPeriod
+    } as const;
+  }, [draftValues]);
+
+  const draftMonthsDisplay = draftComputation
+    ? monthsFormatter.format(draftComputation.months)
+    : "—";
+  const draftMonthlyCostDisplay = draftComputation
+    ? currencyFormatter.format(draftComputation.monthlyCost)
+    : "—";
+  const draftAnnualCostDisplay = draftComputation
+    ? currencyFormatter.format(draftComputation.annualCost)
+    : "—";
+  const draftOrganismoError = draftErrors.organismo;
+  const draftCtaError = draftErrors.cta;
+  const draftFechaInicioError = draftErrors.fechaInicio;
+  const draftFechaFinError = draftErrors.fechaFin;
 
   const detMesFromLevelTwo = globalDeterminations;
   const detMesOverrideNumber = Number(detMesOverride);
@@ -412,15 +472,41 @@ export function ThirdPartyAccreditationSection({
     }
   }, [detMesEffective, onChange, sublevel, validComputations]);
 
-  const handleAddAccreditation = () => {
-    append({
-      formId: createItemId(),
+  const handleAddAccreditation = handleSubmitDraft((data) => {
+    const monthsResult = calculateExactMonths(data.fechaInicio, data.fechaFin);
+    const months = monthsResult.months;
+    const monthlyCost = months > 0 ? data.cta / months : 0;
+    const annualCost = monthlyCost * 12;
+    const determinationsValue = detMesEffective > 0 ? detMesEffective : 0;
+
+    const newItem: SharedResourceCostItem = {
+      id: createItemId(),
+      concept: data.organismo,
+      monthlyCost,
+      determinations: determinationsValue,
+      accreditationDetails: {
+        organismo: data.organismo,
+        cta: data.cta,
+        months,
+        monthlyCost,
+        annualCost,
+        detMes: determinationsValue,
+        shortPeriod: monthsResult.shortPeriod,
+        period: {
+          start: data.fechaInicio.toISOString(),
+          end: data.fechaFin.toISOString()
+        }
+      }
+    };
+
+    onChange({ ...sublevel, items: [...sublevel.items, newItem] });
+    resetDraft({
       organismo: "",
       cta: "",
       fechaInicio: "",
       fechaFin: ""
     });
-  };
+  });
 
   return (
     <section
@@ -485,8 +571,8 @@ export function ThirdPartyAccreditationSection({
       <div className="space-y-3">
         {fields.length === 0 ? (
           <p className="rounded-lg border border-dashed border-emerald-200 bg-white/70 p-4 text-sm text-emerald-800">
-            Aún no agregaste costos de acreditación. Usá el botón inferior para
-            cargar el primero.
+            Aún no agregaste costos de acreditación. Usá el formulario inferior
+            para cargar el primero.
           </p>
         ) : null}
 
@@ -637,16 +723,121 @@ export function ThirdPartyAccreditationSection({
             </div>
           );
         })}
-      </div>
 
-      <button
-        type="button"
-        onClick={handleAddAccreditation}
-        className="flex w-full items-center justify-center gap-2 rounded-md border border-emerald-300 bg-white/80 px-3 py-2 text-sm font-medium text-emerald-900 transition hover:bg-emerald-50"
-      >
-        <PlusIcon className="h-4 w-4" aria-hidden="true" />
-        Agregar costo de acreditación
-      </button>
+        <form
+          onSubmit={handleAddAccreditation}
+          className={`space-y-3 rounded-lg border p-4 ${appearance.form}`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className={`text-base font-semibold ${appearance.header}`}>
+              Nuevo costo de acreditación
+            </h4>
+            <span className="text-xs text-emerald-700">
+              Los campos se limpian al guardar
+            </span>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-medium text-emerald-900">
+                Organismo acreditador
+              </span>
+              <input
+                type="text"
+                {...registerDraft("organismo")}
+                className="rounded-md border border-emerald-300 px-3 py-2 text-sm focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
+              />
+              {draftOrganismoError ? (
+                <span className="text-xs text-rose-600">
+                  {draftOrganismoError.message}
+                </span>
+              ) : null}
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-medium text-emerald-900">CTA (ARS)</span>
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                {...registerDraft("cta")}
+                className="rounded-md border border-emerald-300 px-3 py-2 text-sm focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
+              />
+              {draftCtaError ? (
+                <span className="text-xs text-rose-600">
+                  {draftCtaError.message}
+                </span>
+              ) : (
+                <span className="text-xs text-emerald-700">
+                  Componé este valor con el costo de la acreditación más el
+                  costo estimado de al menos la última visita de auditoría
+                  (viáticos por 1–3 días si corresponde).
+                </span>
+              )}
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-medium text-emerald-900">
+                Fecha de inicio
+              </span>
+              <input
+                type="date"
+                {...registerDraft("fechaInicio")}
+                className="rounded-md border border-emerald-300 px-3 py-2 text-sm focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
+              />
+              {draftFechaInicioError ? (
+                <span className="text-xs text-rose-600">
+                  {draftFechaInicioError.message}
+                </span>
+              ) : null}
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-medium text-emerald-900">Fecha de fin</span>
+              <input
+                type="date"
+                {...registerDraft("fechaFin")}
+                className="rounded-md border border-emerald-300 px-3 py-2 text-sm focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
+              />
+              {draftFechaFinError ? (
+                <span className="text-xs text-rose-600">
+                  {draftFechaFinError.message}
+                </span>
+              ) : null}
+            </label>
+          </div>
+
+          <dl className="grid gap-2 rounded-md bg-white/80 p-3 text-sm text-emerald-900 md:grid-cols-3">
+            <div className="flex flex-col gap-0.5">
+              <dt className="font-medium">Meses exactos de vigencia (M)</dt>
+              <dd>{draftMonthsDisplay}</dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="font-medium">Costo mensual individual (CMi)</dt>
+              <dd>{draftMonthlyCostDisplay}</dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="font-medium">Costo anual individual (CAi)</dt>
+              <dd>{draftAnnualCostDisplay}</dd>
+            </div>
+          </dl>
+
+          {draftComputation?.shortPeriod ? (
+            <p className="text-sm text-amber-700">
+              Período demasiado corto, verificá las fechas.
+            </p>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={!isDraftValid}
+            className="flex w-full items-center justify-center gap-2 rounded-md border border-emerald-300 bg-white/80 px-3 py-2 text-sm font-medium text-emerald-900 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <PlusIcon className="h-4 w-4" aria-hidden="true" />
+            Agregar costo de acreditación
+          </button>
+        </form>
+      </div>
 
       <aside className="space-y-2 rounded-lg border border-emerald-200 bg-white/85 p-4 text-sm text-emerald-900">
         <h4 className="text-base font-semibold text-emerald-900">
