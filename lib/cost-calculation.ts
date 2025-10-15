@@ -138,6 +138,14 @@ export interface SharedResourceCostItem {
       end: string;
     };
   };
+  interlaboratoryDetails?: {
+    contraparte: string;
+    tipoCanon: "anual" | "totalPeriodo";
+    canon: number;
+    moneda: CurrencyCode;
+    anios: number;
+    detMensuales: number;
+  };
 }
 
 export interface SharedResourceSublevelState {
