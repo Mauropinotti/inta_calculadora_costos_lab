@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { SummaryPanel } from "@/components/SummaryPanel";
 import type { LevelTotal } from "@/lib/cost-calculation";
 import { currencyFormatter } from "@/lib/cost-calculation";
+import { formatARS } from "@/lib/money";
 
 vi.mock("@/contexts/HourlyRatesContext", () => ({
   useHourlyRates: () => ({
@@ -42,6 +43,15 @@ describe("SummaryPanel", () => {
       note: "Cotización cierre"
     };
 
+    const pricing = {
+      precioARS: 120000,
+      porcentajeEEA: 10,
+      porcentajeCentro: 5,
+      afectacionEEA: 12000,
+      afectacionCentro: 6000,
+      precioNeto: 102000
+    };
+
     render(
       <SummaryPanel
         orderedTotals={orderedTotals}
@@ -50,6 +60,7 @@ describe("SummaryPanel", () => {
         serviceName="Servicio de ensayo"
         laboratoryName="Laboratorio INTa"
         quoteDateISO="2024-05-20"
+        pricing={pricing}
       />
     );
 
@@ -67,6 +78,11 @@ describe("SummaryPanel", () => {
     expect(screen.getByText(/Fuente: Monedapi\.ar/i)).toBeInTheDocument();
     expect(screen.getByText(/Fecha 2024-04-15/i)).toBeInTheDocument();
     expect(screen.getByText(/Observaciones: Cotización cierre/i)).toBeInTheDocument();
+    expect(
+      screen.getByText("Precio y afectación institucional")
+    ).toBeInTheDocument();
+    expect(screen.getByText(formatARS(pricing.precioARS))).toBeInTheDocument();
+    expect(screen.getByText(formatARS(pricing.precioNeto))).toBeInTheDocument();
   });
 
   it("presenta la desagregación del equipamiento manteniendo el subtotal", () => {
@@ -111,6 +127,15 @@ describe("SummaryPanel", () => {
       note: undefined
     };
 
+    const pricing = {
+      precioARS: 150000,
+      porcentajeEEA: 12,
+      porcentajeCentro: 7,
+      afectacionEEA: 18000,
+      afectacionCentro: 10500,
+      precioNeto: 121500
+    };
+
     const { container } = render(
       <SummaryPanel
         orderedTotals={orderedTotals}
@@ -119,6 +144,7 @@ describe("SummaryPanel", () => {
         serviceName="Servicio de ensayo"
         laboratoryName="Laboratorio INTa"
         quoteDateISO="2024-05-20"
+        pricing={pricing}
       />
     );
 

@@ -11,7 +11,7 @@ exports[`SummaryPanel presenta la desagregación del equipamiento manteniendo el
           Resumen del servicio
         </h2>
         <p class="text-sm text-slate-600">
-          Visualiza el aporte parcial de cada nivel y el costo total estimado del servicio.
+          Visualiza el aporte parcial de cada nivel y el costo unitario del servicio rutinario.
         </p>
       </div>
       <div class="space-y-2 rounded-lg bg-inta-blue/5 p-3 text-xs text-slate-700">
@@ -133,7 +133,7 @@ exports[`SummaryPanel presenta la desagregación del equipamiento manteniendo el
       </ul>
       <div class="flex flex-col gap-2 rounded-2xl border border-inta-blue bg-inta-blue/10 p-4 text-slate-800">
         <p class="text-lg font-semibold text-inta-blue">
-          Costo total estimado
+          Costo Unitario del Servicio Rutinario
         </p>
         <p class="text-2xl font-bold text-inta-blue">
           $ 1.700,00
@@ -141,6 +141,43 @@ exports[`SummaryPanel presenta la desagregación del equipamiento manteniendo el
         <p class="text-sm text-inta-blue/80">
           ≈ US$ 2,13
         </p>
+      </div>
+      <div class="space-y-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900">
+        <p class="text-lg font-semibold text-amber-900">
+          Precio y afectación institucional
+        </p>
+        <dl class="space-y-2 text-amber-800">
+          <div class="flex items-center justify-between gap-2">
+            <dt>Precio (ARS)</dt>
+            <dd class="font-semibold text-amber-900">
+              AR$ 150.000,00
+            </dd>
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <dt>
+              Afectación EEA o Instituto de Investigación
+              <span class="text-xs text-amber-700">(12%)</span>
+            </dt>
+            <dd class="font-semibold text-amber-900">
+              AR$ 18.000,00
+            </dd>
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <dt>
+              Afectación Centro Regional / Centro de Investigación
+              <span class="text-xs text-amber-700">(7%)</span>
+            </dt>
+            <dd class="font-semibold text-amber-900">
+              AR$ 10.500,00
+            </dd>
+          </div>
+          <div class="flex items-center justify-between gap-2 border-t border-dashed border-amber-200 pt-2">
+            <dt>Precio neto</dt>
+            <dd class="text-lg font-bold text-inta-green">
+              AR$ 121.500,00
+            </dd>
+          </div>
+        </dl>
       </div>
     </div>
   </div>

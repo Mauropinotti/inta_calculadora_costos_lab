@@ -5,7 +5,7 @@ import { IntroPanel } from "@/components/IntroPanel";
 import { LevelOneCard } from "@/components/LevelOneCard";
 import { IndirectLevelCard } from "@/components/IndirectLevelCard";
 import { PercentageLevelCard } from "@/components/PercentageLevelCard";
-import { SequentialPercentageLevelCard } from "@/components/SequentialPercentageLevelCard";
+import { InstitutionalPricingPanel } from "@/components/InstitutionalPricingPanel";
 import { SummaryPanel } from "@/components/SummaryPanel";
 import { ConfigurationPanel } from "@/components/ConfigurationPanel";
 import { HourlyRatesPanel } from "@/components/HourlyRatesPanel";
@@ -14,8 +14,7 @@ import type {
   LevelState,
   PercentageLevelState,
   SublevelState,
-  IndirectSublevelState,
-  SequentialPercentageLevelState
+  IndirectSublevelState
 } from "@/lib/cost-calculation";
 import {
   calculateTotals,
@@ -26,6 +25,7 @@ import {
   useExchangeRate
 } from "@/contexts/ExchangeRateContext";
 import { HourlyRatesProvider } from "@/contexts/HourlyRatesContext";
+import { round2 } from "@/lib/money";
 
 const DEFAULT_GLOBAL_DETERMINATIONS = 100;
 
@@ -181,29 +181,6 @@ function createInitialLevels(globalDeterminations: number): LevelState[] {
           items: []
         }
       ]
-    },
-    {
-      id: "afectacionInstitucional",
-      name: "Nivel 4 · Afectación institucional",
-      description:
-        "Distribuye porcentualmente los fondos resultantes entre el Centro Regional o de Investigación y la EEA/Instituto responsable del servicio, siguiendo los acuerdos de la Fundación ArgenINTA.",
-      type: "sequential-percentage",
-      base: ["nivel1", "serviciosGenerales", "acreditacion"],
-      steps: [
-        {
-          id: "centroRegional",
-          name: "Centro Regional / Centro de Investigación",
-          rate: 5,
-          applyOn: "base"
-        },
-        {
-          id: "eeaMarcosJuarez",
-          name: "EEA o Instituto de Investigación",
-          rate: 10,
-          applyOn: "remaining"
-        }
-      ]
-    }
   ];
 }
 
@@ -214,6 +191,9 @@ function HomePageContent() {
   const [levels, setLevels] = useState<LevelState[]>(() =>
     createInitialLevels(DEFAULT_GLOBAL_DETERMINATIONS)
   );
+  const [priceARS, setPriceARS] = useState<number>(0);
+  const [percentageEEA, setPercentageEEA] = useState<number>(10);
+  const [percentageCentro, setPercentageCentro] = useState<number>(5);
   const [serviceName, setServiceName] = useState("");
   const [laboratoryName, setLaboratoryName] = useState("");
   const {
@@ -237,6 +217,19 @@ function HomePageContent() {
   const { totals, orderedTotals, grandTotal } = useMemo(
     () => calculateTotals(levels, { exchangeRate: exchangeRateState.rate }),
     [levels, exchangeRateState.rate]
+  );
+
+  const afectacionEEA = useMemo(
+    () => round2(priceARS * (percentageEEA / 100)),
+    [percentageEEA, priceARS]
+  );
+  const afectacionCentro = useMemo(
+    () => round2(priceARS * (percentageCentro / 100)),
+    [percentageCentro, priceARS]
+  );
+  const precioNeto = useMemo(
+    () => round2(priceARS - afectacionEEA - afectacionCentro),
+    [afectacionCentro, afectacionEEA, priceARS]
   );
 
   const handleSublevelChange = (
@@ -350,54 +343,17 @@ function HomePageContent() {
     );
   };
 
-  const handleSequentialPercentageChange = (
-    id: LevelKey,
-    updates: {
-      base?: LevelKey[];
-      steps?: Array<{ id: string; rate: number }>;
-    }
-  ) => {
-    setLevels((prev) =>
-      prev.map((level, index) => {
-        if (level.id !== id || level.type !== "sequential-percentage") {
-          return level;
-        }
-
-        const allowedBase = new Set(
-          prev.slice(0, index).map((candidate) => candidate.id)
-        );
-
-        const nextSteps = updates.steps
-          ? level.steps.map((step) => {
-              const updated = updates.steps?.find((item) => item.id === step.id);
-              if (!updated || Number.isNaN(updated.rate)) {
-                return step;
-              }
-
-              return {
-                ...step,
-                rate: updated.rate
-              } satisfies SequentialPercentageLevelState["steps"][number];
-            })
-          : level.steps;
-
-        return {
-          ...level,
-          base: updates.base
-            ? updates.base.filter((key) => allowedBase.has(key))
-            : level.base,
-          steps: nextSteps
-        } satisfies SequentialPercentageLevelState;
-      })
-    );
-  };
-
   const handleExport = () => {
     const payload = {
       generatedAt: new Date().toISOString(),
       totals,
       grandTotal,
-      levels
+      levels,
+      pricing: {
+        precioARS: round2(priceARS),
+        porcentajeEEA: round2(percentageEEA),
+        porcentajeCentro: round2(percentageCentro)
+      }
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: "application/json"
@@ -515,26 +471,6 @@ function HomePageContent() {
             );
           }
 
-          if (level.type === "sequential-percentage") {
-            const baseBreakdown = levels.slice(0, index).map((candidate) => ({
-              id: candidate.id,
-              name: candidate.name,
-              subtotal: totals[candidate.id]
-            }));
-
-            return (
-              <SequentialPercentageLevelCard
-                key={level.id}
-                level={level}
-                onChange={(updates) =>
-                  handleSequentialPercentageChange(level.id, updates)
-                }
-                baseBreakdown={baseBreakdown}
-                currentTotals={totals}
-              />
-            );
-          }
-
           if (level.type !== "percentage") {
             return null;
           }
@@ -555,6 +491,16 @@ function HomePageContent() {
             />
           );
         })}
+
+        <InstitutionalPricingPanel
+          baseCost={grandTotal}
+          priceARS={priceARS}
+          percentageEEA={percentageEEA}
+          percentageCentro={percentageCentro}
+          onPriceChange={setPriceARS}
+          onPercentageEEAChange={setPercentageEEA}
+          onPercentageCentroChange={setPercentageCentro}
+        />
       </div>
 
       <div id="gestor-horas" className="scroll-mt-24">
@@ -569,6 +515,14 @@ function HomePageContent() {
           serviceName={serviceName}
           laboratoryName={laboratoryName}
           quoteDateISO={quoteDateISO}
+          pricing={{
+            precioARS: priceARS,
+            porcentajeEEA: percentageEEA,
+            porcentajeCentro: percentageCentro,
+            afectacionEEA,
+            afectacionCentro,
+            precioNeto
+          }}
         />
       </div>
     </div>
