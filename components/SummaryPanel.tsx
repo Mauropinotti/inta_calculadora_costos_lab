@@ -2,6 +2,7 @@
 
 import type { LevelTotal } from "@/lib/cost-calculation";
 import { currencyFormatter } from "@/lib/cost-calculation";
+import { formatARS } from "@/lib/money";
 import type { ExchangeRateState } from "@/contexts/ExchangeRateContext";
 import { useHourlyRates } from "@/contexts/HourlyRatesContext";
 
@@ -12,6 +13,14 @@ interface SummaryPanelProps {
   serviceName: string;
   laboratoryName: string;
   quoteDateISO: string;
+  pricing: {
+    precioARS: number;
+    porcentajeEEA: number;
+    porcentajeCentro: number;
+    afectacionEEA: number;
+    afectacionCentro: number;
+    precioNeto: number;
+  };
 }
 
 const exchangeRateFormatter = new Intl.NumberFormat("es-AR", {
@@ -31,7 +40,8 @@ export function SummaryPanel({
   exchangeRate,
   serviceName,
   laboratoryName,
-  quoteDateISO
+  quoteDateISO,
+  pricing
 }: SummaryPanelProps) {
   const { state: hourlyRateState } = useHourlyRates();
   const sourceLabel =
@@ -69,7 +79,15 @@ export function SummaryPanel({
       lastSyncType: hourlyRateState.lastSyncType ?? null
     },
     totals: orderedTotals,
-    grandTotal
+    grandTotal,
+    pricing: {
+      precioARS: pricing.precioARS,
+      porcentajeEEA: pricing.porcentajeEEA,
+      porcentajeCentro: pricing.porcentajeCentro,
+      afectacionEEA: pricing.afectacionEEA,
+      afectacionCentro: pricing.afectacionCentro,
+      precioNeto: pricing.precioNeto
+    }
   };
 
   const handleSummaryExport = (format: "json" | "csv") => {
@@ -137,6 +155,17 @@ export function SummaryPanel({
       "Costo Unitario del Servicio Rutinario",
       currencyFormatter.format(grandTotal)
     ]);
+
+    rows.push(["Precio (ARS)", formatARS(pricing.precioARS)]);
+    rows.push([
+      `Afectación EEA o Instituto de Investigación (${pricing.porcentajeEEA}%)`,
+      formatARS(pricing.afectacionEEA)
+    ]);
+    rows.push([
+      `Afectación Centro Regional / Centro de Investigación (${pricing.porcentajeCentro}%)`,
+      formatARS(pricing.afectacionCentro)
+    ]);
+    rows.push(["Precio neto", formatARS(pricing.precioNeto)]);
 
     const csvContent = rows
       .map((cols) =>
@@ -287,6 +316,46 @@ export function SummaryPanel({
                 ≈ {usdCurrencyFormatter.format(grandTotal / exchangeRate.rate)}
               </p>
             ) : null}
+          </div>
+
+          <div className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900">
+            <p className="text-lg font-semibold text-amber-900">
+              Precio y afectación institucional
+            </p>
+            <dl className="space-y-2 text-amber-800">
+              <div className="flex items-center justify-between gap-2">
+                <dt>Precio (ARS)</dt>
+                <dd className="font-semibold text-amber-900">
+                  {formatARS(pricing.precioARS)}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <dt>
+                  Afectación EEA o Instituto de Investigación
+                  {" "}
+                  <span className="text-xs text-amber-700">({pricing.porcentajeEEA}%)</span>
+                </dt>
+                <dd className="font-semibold text-amber-900">
+                  {formatARS(pricing.afectacionEEA)}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <dt>
+                  Afectación Centro Regional / Centro de Investigación
+                  {" "}
+                  <span className="text-xs text-amber-700">({pricing.porcentajeCentro}%)</span>
+                </dt>
+                <dd className="font-semibold text-amber-900">
+                  {formatARS(pricing.afectacionCentro)}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-2 border-t border-dashed border-amber-200 pt-2">
+                <dt>Precio neto</dt>
+                <dd className="text-lg font-bold text-inta-green">
+                  {formatARS(pricing.precioNeto)}
+                </dd>
+              </div>
+            </dl>
           </div>
         </div>
       </div>

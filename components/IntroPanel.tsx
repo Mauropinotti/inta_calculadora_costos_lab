@@ -130,11 +130,13 @@ export function IntroPanel({ onExport }: IntroPanelProps) {
             </li>
             <li className="space-y-2 text-white/80">
               <p className="font-semibold text-white">
-                Ajustá porcentajes institucionales
+                Definí el precio y la afectación institucional
               </p>
               <p>
-                Editá el Nivel 4 para prorratear afectaciones secuenciales sobre los costos
-                acumulados de los niveles anteriores y reflejar convenios vigentes.
+                Ingresá el precio del servicio, configurá los porcentajes para la EEA o
+                Instituto de Investigación y el Centro Regional / Centro de Investigación
+                y verificá si el valor queda por encima, igual o por debajo del costo base
+                calculado.
               </p>
             </li>
             <li className="space-y-2 text-white/80">
