@@ -20,6 +20,7 @@ import {
   createInfrastructureDefaultItems
 } from "@/lib/cost-calculation";
 import { InfoIcon, PlusIcon } from "./icons";
+import { InterlaboratoryParticipationSection } from "./InterlaboratoryParticipationSection";
 import { ThirdPartyAccreditationSection } from "./ThirdPartyAccreditationSection";
 
 interface IndirectLevelCardProps {
@@ -332,6 +333,18 @@ export function IndirectLevelCard({
               );
             }
 
+            if (sublevel.id === interlaboratoryParticipationSublevelId) {
+              return (
+                <InterlaboratoryParticipationSection
+                  key={sublevel.id}
+                  sublevel={sublevel}
+                  onChange={onSublevelChange}
+                  appearance={appearance}
+                  globalDeterminations={globalDeterminations}
+                />
+              );
+            }
+
             return (
               <SharedResourceSublevelSection
                 key={sublevel.id}
@@ -402,6 +415,7 @@ interface MaintenanceEquipmentSectionProps
 
 const maintenanceSublevelId = "mantenimientoEquipamiento";
 const thirdPartyAccreditationSublevelId = "acreditacionTercerasPartes";
+const interlaboratoryParticipationSublevelId = "ensayosInterlaboratorio";
 const infrastructureSublevelId = "infraestructura";
 const numberFormatter = new Intl.NumberFormat("es-AR", {
   maximumFractionDigits: 4
