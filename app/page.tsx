@@ -181,6 +181,7 @@ function createInitialLevels(globalDeterminations: number): LevelState[] {
           items: []
         }
       ]
+    }
   ];
 }
 
