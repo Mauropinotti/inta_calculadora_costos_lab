@@ -79,7 +79,7 @@ export function InstitutionalPricingPanel({
     [priceARS, percentageCentro]
   );
   const precioNeto = useMemo(
-    () => round2(priceARS - afectacionEEA - afectacionCentro),
+    () => round2(priceARS + afectacionEEA + afectacionCentro),
     [afectacionCentro, afectacionEEA, priceARS]
   );
 
