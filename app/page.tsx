@@ -216,7 +216,7 @@ function HomePageContent() {
     [percentageCentro, priceARS]
   );
   const precioNeto = useMemo(
-    () => round2(priceARS - afectacionEEA - afectacionCentro),
+    () => round2(priceARS + afectacionEEA + afectacionCentro),
     [afectacionCentro, afectacionEEA, priceARS]
   );
 

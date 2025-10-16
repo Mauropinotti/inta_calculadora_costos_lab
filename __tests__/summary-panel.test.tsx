@@ -49,7 +49,7 @@ describe("SummaryPanel", () => {
       porcentajeCentro: 5,
       afectacionEEA: 12000,
       afectacionCentro: 6000,
-      precioNeto: 102000
+      precioNeto: 138000
     };
 
     render(
@@ -133,7 +133,7 @@ describe("SummaryPanel", () => {
       porcentajeCentro: 7,
       afectacionEEA: 18000,
       afectacionCentro: 10500,
-      precioNeto: 121500
+      precioNeto: 178500
     };
 
     const { container } = render(

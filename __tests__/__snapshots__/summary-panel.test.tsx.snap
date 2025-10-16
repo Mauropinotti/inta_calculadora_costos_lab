@@ -174,7 +174,7 @@ exports[`SummaryPanel presenta la desagregación del equipamiento manteniendo el
           <div class="flex items-center justify-between gap-2 border-t border-dashed border-amber-200 pt-2">
             <dt>Precio neto</dt>
             <dd class="text-lg font-bold text-inta-green">
-              AR$ 121.500,00
+              AR$ 178.500,00
             </dd>
           </div>
         </dl>
