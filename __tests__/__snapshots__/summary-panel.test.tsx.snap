@@ -49,12 +49,6 @@ exports[`SummaryPanel presenta la desagregación del equipamiento manteniendo el
           </span>
           — Fecha 2024-05-01
         </p>
-        <p>
-          Fuente de valor hora:
-          <span class="font-medium text-slate-800">
-            Tabla local (2024-01-01 · importación)
-          </span>
-        </p>
       </div>
       <div class="flex flex-col gap-2 pt-2 text-xs text-slate-600">
         <span class="font-medium text-slate-700">

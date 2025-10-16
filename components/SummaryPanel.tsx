@@ -229,10 +229,6 @@ export function SummaryPanel({
             {exchangeRate.note ? (
               <p className="text-slate-500">Observaciones: {exchangeRate.note}</p>
             ) : null}
-            <p>
-              Fuente de valor hora: {" "}
-              <span className="font-medium text-slate-800">{hourlySyncLabel}</span>
-            </p>
           </div>
 
           <div className="flex flex-col gap-2 pt-2 text-xs text-slate-600">
