@@ -130,22 +130,25 @@ function selectMostRecentRow(
   dateInfo: { displayDate: string; dateISO: string } | null;
   hour: string | null;
 } | null {
-  let best: {
+  type Candidate = {
     row: string[];
     dateInfo: { displayDate: string; dateISO: string } | null;
     hour: string | null;
     index: number;
-  } | null = null;
+  };
 
-  rows.forEach((row, index) => {
+  let best: Candidate | null = null;
+
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index];
     const rowContext = row.join(" ");
     const dateInfo = extractDateContext(rowContext);
     const hour = extractHourContext(rowContext);
-    const candidate = { row, dateInfo, hour, index };
+    const candidate: Candidate = { row, dateInfo, hour, index };
 
     if (!best) {
       best = candidate;
-      return;
+      continue;
     }
 
     const bestDateISO = best.dateInfo?.dateISO ?? null;
@@ -153,13 +156,13 @@ function selectMostRecentRow(
 
     if (candidateDateISO && !bestDateISO) {
       best = candidate;
-      return;
+      continue;
     }
 
     if (candidateDateISO && bestDateISO) {
       if (candidateDateISO > bestDateISO) {
         best = candidate;
-        return;
+        continue;
       }
 
       if (candidateDateISO === bestDateISO) {
@@ -170,7 +173,7 @@ function selectMostRecentRow(
           (bestMinutes === null || candidateMinutes > bestMinutes)
         ) {
           best = candidate;
-          return;
+          continue;
         }
       }
     }
@@ -178,14 +181,16 @@ function selectMostRecentRow(
     if (!best.dateInfo && !candidate.dateInfo && candidate.index > best.index) {
       best = candidate;
     }
-  });
+  }
 
   if (!best) {
     return null;
   }
 
-  let dateInfo = best.dateInfo;
-  let hour = best.hour;
+  const { row: bestRow, dateInfo: bestDateInfo, hour: bestHour } = best;
+
+  let dateInfo = bestDateInfo;
+  let hour = bestHour;
 
   if (!dateInfo) {
     dateInfo = extractDateContext(fallbackContext);
@@ -196,7 +201,7 @@ function selectMostRecentRow(
   }
 
   return {
-    row: best.row,
+    row: bestRow,
     dateInfo,
     hour
   };
