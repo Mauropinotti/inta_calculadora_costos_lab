@@ -32,6 +32,7 @@ const LEVEL_TWO_SUBLEVEL_IDS = new Set<IndirectSublevelState["id"]>([
   "materialesNoDescartables",
   "equipamientoMenor",
   "mantenimientoEquipamiento",
+  "calibracionEquipamiento",
   "infraestructura"
 ]);
 
@@ -120,9 +121,17 @@ function createInitialLevels(globalDeterminations: number): LevelState[] {
         },
         {
           id: "mantenimientoEquipamiento",
-          name: "c.3) Mantenimiento/Calibración de equipos",
+          name: "c.3.1) Mantenimiento de equipos",
           description:
-            "Incluye honorarios, repuestos y servicios de mantenimiento y calibración periódica de los equipos, prorrateados según la actividad mensual.",
+            "Incluye honorarios, repuestos y servicios de mantenimiento periódico de los equipos, prorrateados según la actividad mensual.",
+          type: "shared-resource",
+          items: []
+        },
+        {
+          id: "calibracionEquipamiento",
+          name: "c.3.2) Calibración de equipos",
+          description:
+            "Considera servicios de calibración interna o externa requeridos para asegurar la trazabilidad metrológica de los equipos, prorrateados según la actividad mensual.",
           type: "shared-resource",
           items: []
         },
