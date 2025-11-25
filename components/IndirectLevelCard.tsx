@@ -160,6 +160,7 @@ const levelTwoSublevels = new Set<IndirectSublevelState["id"]>([
   "materialesNoDescartables",
   "equipamientoMenor",
   "mantenimientoEquipamiento",
+  "calibracionEquipamiento",
   "infraestructura"
 ]);
 
@@ -295,7 +296,10 @@ export function IndirectLevelCard({
             levelTwoSublevels.has(sublevel.id);
 
           if (sublevel.type === "shared-resource") {
-            if (sublevel.id === maintenanceSublevelId) {
+            if (maintenanceSublevelIds.has(sublevel.id as MaintenanceSublevelId)) {
+              const maintenanceConfig =
+                maintenanceSublevelConfigs[sublevel.id as MaintenanceSublevelId];
+
               return (
                 <MaintenanceEquipmentSection
                   key={sublevel.id}
@@ -304,6 +308,7 @@ export function IndirectLevelCard({
                   appearance={appearance}
                   globalDeterminations={globalDeterminations}
                   useGlobalDeterminations={useGlobalDeterminations}
+                  config={maintenanceConfig}
                 />
               );
             }
@@ -397,10 +402,53 @@ interface SharedResourceSublevelSectionProps {
   useGlobalDeterminations: boolean;
 }
 
-interface MaintenanceEquipmentSectionProps
-  extends SharedResourceSublevelSectionProps {}
+type MaintenanceSublevelId =
+  | "mantenimientoEquipamiento"
+  | "calibracionEquipamiento";
 
-const maintenanceSublevelId = "mantenimientoEquipamiento";
+type MaintenanceSublevelConfig = {
+  mode: "maintenance" | "calibration";
+  infoTitle: string;
+  infoMessage: string;
+  equipmentLabel: string;
+  equipmentHelper: string;
+  placeholder: string;
+  addButtonLabel: string;
+};
+
+interface MaintenanceEquipmentSectionProps
+  extends SharedResourceSublevelSectionProps {
+  config: MaintenanceSublevelConfig;
+}
+
+const maintenanceSublevelConfigs: Record<MaintenanceSublevelId, MaintenanceSublevelConfig> = {
+  mantenimientoEquipamiento: {
+    mode: "maintenance",
+    infoTitle: "Ejemplos de mantenimiento",
+    infoMessage:
+      "Este subnivel contempla gastos de mantenimiento preventivo y correctivo de equipos conforme a prácticas ISO/IEC 17025/GLP.",
+    equipmentLabel: "Equipo a mantener",
+    equipmentHelper:
+      "Identificá el equipo o contrato de mantenimiento que estás cargando.",
+    placeholder: "Centrífuga refrigerada",
+    addButtonLabel: "Agregar mantenimiento de equipo"
+  },
+  calibracionEquipamiento: {
+    mode: "calibration",
+    infoTitle: "Ejemplos de calibración",
+    infoMessage:
+      "Este subnivel contempla servicios de calibración interna o externa para asegurar la trazabilidad metrológica de los equipos.",
+    equipmentLabel: "Equipo a calibrar",
+    equipmentHelper:
+      "Identificá el equipo o servicio de calibración que estás cargando.",
+    placeholder: "Balanza analítica",
+    addButtonLabel: "Agregar calibración de equipo"
+  }
+};
+
+const maintenanceSublevelIds = new Set<MaintenanceSublevelId>([...Object.keys(
+  maintenanceSublevelConfigs
+) as MaintenanceSublevelId[]]);
 const thirdPartyAccreditationSublevelId = "acreditacionTercerasPartes";
 const interlaboratoryParticipationSublevelId = "ensayosInterlaboratorio";
 const infrastructureSublevelId = "infraestructura";
@@ -436,6 +484,9 @@ function SharedResourceSublevelSection({
     [sublevel]
   );
   const isInfrastructureSublevel = sublevel.id === infrastructureSublevelId;
+  const isMaintenanceSublevel = maintenanceSublevelIds.has(
+    sublevel.id as MaintenanceSublevelId
+  );
   const [draft, setDraft] = useState({
     concept: "",
     monthlyCost: "",
@@ -613,7 +664,6 @@ function SharedResourceSublevelSection({
     });
   };
 
-  const isMaintenanceSublevel = sublevel.id === maintenanceSublevelId;
   const tooltip = sublevelTooltips[sublevel.id];
 
   const showGlobalDeterminationsWarning =
@@ -644,18 +694,6 @@ function SharedResourceSublevelSection({
         <p className={`text-sm ${appearance.description}`}>
           {sublevel.description}
         </p>
-        {isMaintenanceSublevel ? (
-          <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50/80 p-3 text-sm text-amber-900">
-            <InfoIcon
-              className="mt-0.5 h-4 w-4 shrink-0 text-amber-600"
-              aria-label="Referencia de mantenimiento y calibración"
-              title="Considerá contratos de mantenimiento, calibraciones periódicas y ajustes requeridos para asegurar la aptitud del equipo."
-            />
-            <p className="leading-snug">
-              Este subnivel contempla gastos de mantenimiento y calibración periódica de equipos conforme a prácticas ISO/IEC 17025/GLP.
-            </p>
-          </div>
-        ) : null}
       </header>
 
       <div className="overflow-x-auto">
@@ -873,7 +911,8 @@ function MaintenanceEquipmentSection({
   onChange,
   appearance,
   globalDeterminations,
-  useGlobalDeterminations
+  useGlobalDeterminations,
+  config
 }: MaintenanceEquipmentSectionProps) {
   const subtotal = useMemo(
     () => calculateIndirectSublevelSubtotal(sublevel),
@@ -1131,8 +1170,8 @@ function MaintenanceEquipmentSection({
             </h3>
             <InfoIcon
               className={`h-4 w-4 ${appearance.header}`}
-              aria-label="Ejemplos de mantenimiento"
-              title="Ejemplos: limpieza, ajustes, repuestos"
+              aria-label={config.infoTitle}
+              title={config.infoTitle}
             />
           </div>
           <span className="text-base font-semibold text-inta-green">
@@ -1148,7 +1187,7 @@ function MaintenanceEquipmentSection({
             aria-hidden="true"
           />
           <p className="leading-snug">
-            Este subnivel contempla gastos de mantenimiento y calibración periódica de equipos conforme a prácticas ISO/IEC 17025/GLP.
+            {config.infoMessage}
           </p>
         </div>
       </header>
@@ -1159,10 +1198,10 @@ function MaintenanceEquipmentSection({
           onSubmit={handleAddMaintenance}
         >
           <label className="flex flex-col space-y-1">
-            <span>Equipo a mantener</span>
+            <span>{config.equipmentLabel}</span>
             <input
               type="text"
-              placeholder="Centrífuga refrigerada"
+              placeholder={config.placeholder}
               className="rounded-md border border-slate-300 px-3 py-2 focus:border-inta-blue focus:outline-none focus:ring-1 focus:ring-inta-blue"
               {...register("equipmentName")}
             />
@@ -1172,7 +1211,7 @@ function MaintenanceEquipmentSection({
               </span>
             ) : (
               <span className="text-xs text-emerald-700">
-                Identificá el equipo o contrato de mantenimiento que estás cargando.
+                {config.equipmentHelper}
               </span>
             )}
           </label>
@@ -1194,7 +1233,7 @@ function MaintenanceEquipmentSection({
                 </span>
               ) : (
                 <span className="text-xs text-emerald-700">
-                  Costo total de mantenimiento para el período analizado.
+                  Costo total del servicio para el período analizado.
                 </span>
               )}
             </label>
@@ -1278,16 +1317,16 @@ function MaintenanceEquipmentSection({
             <button
               type="submit"
               className="rounded-md bg-inta-blue px-3 py-2 text-sm font-medium text-white transition hover:bg-inta-blue/90 disabled:cursor-not-allowed disabled:bg-slate-300"
-              disabled={
-                !isValid ||
-                !results.ready ||
-                !results.cmm ||
-                !results.effectiveDeterminations ||
-                results.ipd === null
-              }
-            >
-              Agregar mantenimiento de equipo
-            </button>
+            disabled={
+              !isValid ||
+              !results.ready ||
+              !results.cmm ||
+              !results.effectiveDeterminations ||
+              results.ipd === null
+            }
+          >
+            {config.addButtonLabel}
+          </button>
             {submitError ? (
               <span className="text-xs text-rose-600">{submitError}</span>
             ) : null}

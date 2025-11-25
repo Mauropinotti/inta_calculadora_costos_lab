@@ -15,6 +15,7 @@ export type IndirectSublevelKey =
   | "materialesNoDescartables"
   | "equipamientoMenor"
   | "mantenimientoEquipamiento"
+  | "calibracionEquipamiento"
   | "infraestructura"
   | "acreditacionTercerasPartes"
   | "monitoreoRegulatorio"
@@ -149,6 +150,7 @@ export interface SharedResourceSublevelState {
   id:
     | "materialesNoDescartables"
     | "mantenimientoEquipamiento"
+    | "calibracionEquipamiento"
     | "infraestructura"
     | "acreditacionTercerasPartes"
     | "monitoreoRegulatorio"
