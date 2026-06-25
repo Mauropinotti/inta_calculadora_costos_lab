@@ -175,12 +175,22 @@ export function ExchangeRateProvider({ children }: { children: ReactNode }) {
             ? "manual"
             : "monedapi";
 
+      const resolvedDateISO = resolvedDate.toISOString().slice(0, 10);
+
       setState({
         rate: normalizedRate,
         source,
-        dateISO: resolvedDate.toISOString().slice(0, 10),
+        dateISO: resolvedDateISO,
         note: manualState.note
       });
+
+      // Sincronizar el estado manual para que el input (enlazado a manualState.rate)
+      // refleje la cotización y onBlur/applyManualState no la pise con el valor viejo.
+      setManualState((prev) => ({
+        ...prev,
+        rate: normalizedRate,
+        dateISO: resolvedDateISO
+      }));
     } catch (error) {
       setState({
         rate: manualState.rate,
