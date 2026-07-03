@@ -3,12 +3,17 @@ import Link from "next/link";
 import "./globals.css";
 import { TermsAndConditions } from "@/components/legal/TermsAndConditions";
 
+// El basePath (subdirectorio de GitHub Pages) no se prepende automáticamente a
+// los assets de `metadata` (favicon, openGraph). Lo agregamos explícitamente.
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+const logoPath = `${basePath}/img/INTA_300x300.jpg`;
+
 export const metadata: Metadata = {
   // Ajustar a la URL pública real del despliegue (p. ej. GitHub Pages).
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
   ),
-  title: "Calculadora de Costos INTA",
+  title: "Calculadora de Costos de Servicios Rutinarios de Laboratorio · INTA Labs",
   description:
     "Prototipo no oficial para estimar los costos de servicios rutinarios de laboratorio en cinco niveles acumulativos, interpretando la Guía metodológica de INTA.",
   authors: [
@@ -17,14 +22,14 @@ export const metadata: Metadata = {
     { name: "Andrés Castellano" }
   ],
   keywords: ["INTA", "costeo", "laboratorio", "calculadora de costos"],
-  icons: { icon: "/img/INTA_300x300.jpg" },
+  icons: { icon: logoPath },
   openGraph: {
-    title: "Calculadora de Costos de Servicios de Laboratorio",
+    title: "Calculadora de Costos de Servicios Rutinarios de Laboratorio",
     description:
       "Prototipo no oficial que interpreta la Guía metodológica de costeo de laboratorios de INTA.",
     locale: "es_AR",
     type: "website",
-    images: [{ url: "/img/INTA_300x300.jpg" }]
+    images: [{ url: logoPath }]
   }
 };
 

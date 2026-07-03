@@ -1,7 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import type { Screen } from "@/app/page";
+
+// next/image no prepende el basePath a `src` de string cuando images.unoptimized
+// está activo (export estático). Lo resolvemos con un <img> y el basePath explícito.
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 const STEPS: { id: Screen; label: string }[] = [
   { id: "dashboard", label: "Inicio" },
@@ -31,21 +34,24 @@ export function StickyHeader({ screen, onNavigate, grandTotal, exchangeRate, pro
     <header className="sticky top-0 z-50 bg-white border-b border-inta-gray-200 shadow-[0_2px_8px_rgba(0,84,143,0.08)]">
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-2.5 gap-3">
-        <div className="flex items-center gap-2.5">
-          <Image
-            src="/img/INTA_300x300.jpg"
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <img
+            src={`${BASE_PATH}/img/INTA_300x300.jpg`}
             alt="Logo INTA"
-            width={34}
-            height={34}
-            priority
-            className="w-[34px] h-[34px] rounded-lg object-contain shrink-0"
+            width={36}
+            height={36}
+            className="w-9 h-9 rounded-lg object-contain shrink-0"
           />
-          <div>
-            <div className="text-xs font-semibold text-inta-blue leading-none">LAB INTA</div>
-            <div className="text-[11px] text-inta-gray-500 leading-tight">Calculadora de Costos</div>
+          <div className="min-w-0">
+            <div className="text-[12px] font-semibold text-inta-blue leading-[1.15]">
+              Calculadora de Costos de Servicios Rutinarios de Laboratorio
+            </div>
+            <div className="text-[10px] uppercase tracking-wide text-inta-gray-500 leading-tight">
+              INTA Labs · Prototipos
+            </div>
           </div>
         </div>
-        <div className="text-right">
+        <div className="text-right shrink-0">
           <div className="text-[11px] text-inta-gray-500 leading-none">Costo unitario estimado</div>
           <div className={`text-xl font-bold tracking-tight leading-snug ${grandTotal > 0 ? "text-inta-green" : "text-inta-gray-400"}`}>
             {fmtARS(grandTotal)}

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -7,6 +6,8 @@ export const metadata: Metadata = {
   description:
     "Guía funcional de la Calculadora de Costos de Servicios de Laboratorio: qué representa cada nivel y cómo se calcula cada valor."
 };
+
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 const GUIA_URL =
   "https://www.argentina.gob.ar/inta/cr-cordoba/guia-metodologica-para-el-costeo-de-servicios-rutinarios-en-laboratorios-de-inta";
@@ -41,8 +42,8 @@ export default function ManualPage() {
     <main className="mx-auto max-w-3xl px-4 py-8">
       {/* Encabezado */}
       <div className="mb-6 flex items-center gap-3">
-        <Image
-          src="/img/INTA_300x300.jpg"
+        <img
+          src={`${BASE_PATH}/img/INTA_300x300.jpg`}
           alt="Logo INTA"
           width={44}
           height={44}
