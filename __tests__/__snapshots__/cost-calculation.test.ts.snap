@@ -26,30 +26,3 @@ exports[`equipamiento específico > mantiene el subtotal del nivel directo e inc
   },
 ]
 `;
-
-exports[`equipamiento específico mantiene el subtotal del nivel directo e incluye la desagregación 1`] = `
-Array [
-  Object {
-    "id": "insumosDirectos",
-    "name": "Insumos",
-    "subtotal": 0,
-  },
-  Object {
-    "breakdown": Array [
-      Object {
-        "id": "equipamientoEspecifico-depreciacion-anual",
-        "name": "Depreciación anual (ARS)",
-        "subtotal": 45000,
-      },
-      Object {
-        "id": "equipamientoEspecifico-depreciacion-mensual",
-        "name": "Depreciación mensual (ARS)",
-        "subtotal": 3750,
-      },
-    ],
-    "id": "equipamientoEspecifico",
-    "name": "Equipamiento",
-    "subtotal": 3750,
-  },
-]
-`;

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { Screen } from "@/app/page";
 
 const STEPS: { id: Screen; label: string }[] = [
@@ -31,11 +32,14 @@ export function StickyHeader({ screen, onNavigate, grandTotal, exchangeRate, pro
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-2.5 gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-[34px] h-[34px] rounded-lg bg-gradient-to-br from-inta-blue to-[#0070BE] flex items-center justify-center shrink-0">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/>
-            </svg>
-          </div>
+          <Image
+            src="/img/INTA_300x300.jpg"
+            alt="Logo INTA"
+            width={34}
+            height={34}
+            priority
+            className="w-[34px] h-[34px] rounded-lg object-contain shrink-0"
+          />
           <div>
             <div className="text-xs font-semibold text-inta-blue leading-none">LAB INTA</div>
             <div className="text-[11px] text-inta-gray-500 leading-tight">Calculadora de Costos</div>

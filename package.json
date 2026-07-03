@@ -2,6 +2,30 @@
   "name": "inta-calculadora-costos",
   "version": "1.0.0",
   "private": true,
+  "description": "Calculadora web de costos de servicios rutinarios de laboratorio: interpretación de la Guía metodológica de INTA en cinco niveles acumulativos. Prototipo independiente, no oficial.",
+  "license": "MIT",
+  "author": "Mauro H. Pinotti",
+  "contributors": [
+    "Mercedes Goizueta (autoría metodológica - INTA EEA Marcos Juárez)",
+    "Andrés Castellano (autoría metodológica - INTA EEA Marcos Juárez)"
+  ],
+  "keywords": [
+    "inta",
+    "costeo",
+    "laboratorio",
+    "calculadora-de-costos",
+    "nextjs",
+    "react",
+    "decimal-js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/[usuario]/inta-calculadora-costos-lab.git"
+  },
+  "homepage": "https://github.com/[usuario]/inta-calculadora-costos-lab#readme",
+  "bugs": {
+    "url": "https://github.com/[usuario]/inta-calculadora-costos-lab/issues"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

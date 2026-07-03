@@ -1,10 +1,30 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { TermsAndConditions } from "@/components/legal/TermsAndConditions";
 
 export const metadata: Metadata = {
+  // Ajustar a la URL pública real del despliegue (Vercel u otra).
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
+  ),
   title: "Calculadora de Costos INTA",
   description:
-    "Herramienta para estimar los costos de servicios de laboratorio de INTA en cinco niveles de aportación."
+    "Prototipo no oficial para estimar los costos de servicios rutinarios de laboratorio en cinco niveles acumulativos, interpretando la Guía metodológica de INTA.",
+  authors: [
+    { name: "Mauro H. Pinotti" },
+    { name: "Mercedes Goizueta" },
+    { name: "Andrés Castellano" }
+  ],
+  keywords: ["INTA", "costeo", "laboratorio", "calculadora de costos"],
+  icons: { icon: "/img/INTA_300x300.jpg" },
+  openGraph: {
+    title: "Calculadora de Costos de Servicios de Laboratorio",
+    description:
+      "Prototipo no oficial que interpreta la Guía metodológica de costeo de laboratorios de INTA.",
+    locale: "es_AR",
+    type: "website",
+    images: [{ url: "/img/INTA_300x300.jpg" }]
+  }
 };
 
 export default function RootLayout({
@@ -20,7 +40,7 @@ export default function RootLayout({
           <p className="mx-auto max-w-4xl">
             Herramienta desarrollada por Mauro H. Pinotti (Gerencia de Gestión
             Estratégica de la Investigación y Desarrollo), en base al trabajo de
-            Mercedes Goizueta y Andrés Castellanos (INTA EEA Marcos Juárez),
+            Mercedes Goizueta y Andrés Castellano (INTA EEA Marcos Juárez),
             autores de la <em>Guía metodológica para el costeo de servicios
             rutinarios en laboratorios de INTA</em>, publicada en{" "}
             <a
@@ -32,6 +52,14 @@ export default function RootLayout({
               Argentina.gob.ar
             </a>
             .
+          </p>
+          <p className="mx-auto mt-2 max-w-4xl text-inta-gray-500">
+            Herramienta no oficial. Prototipo independiente desarrollado por
+            personal de INTA; no representa una posición ni un producto oficial
+            del organismo.
+          </p>
+          <p className="mx-auto mt-3 max-w-4xl">
+            <TermsAndConditions />
           </p>
         </footer>
       </body>

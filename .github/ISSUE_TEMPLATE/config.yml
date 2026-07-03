@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Guía metodológica de INTA (consultas de método)
+    url: https://www.argentina.gob.ar/inta/cr-cordoba/guia-metodologica-para-el-costeo-de-servicios-rutinarios-en-laboratorios-de-inta
+    about: >-
+      Para consultas sobre la metodología de costeo (no sobre el software),
+      consultá la Guía metodológica publicada por INTA. La autoría corresponde a
+      Mercedes Goizueta y Andrés Castellano (INTA EEA Marcos Juárez).
