@@ -76,6 +76,7 @@ export function SummaryScreen({
   const [pricingMode, setPricingMode] = useState<"auto" | "manual">("auto");
   const [exportStatus, setExportStatus] = useState<ExportStatus>(null);
   const [pdfStatus, setPdfStatus] = useState<ExportStatus>(null);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ nivel1: true, serviciosGenerales: false, acreditacion: false });
   const pdfRef = useRef<HTMLDivElement>(null);
 
@@ -190,7 +191,7 @@ export function SummaryScreen({
     }
   };
 
-  const handleExportPDF = async () => {
+  const handleDownloadPDF = async () => {
     if (!pdfRef.current) return;
     setPdfStatus("loading");
     try {
@@ -203,12 +204,15 @@ export function SummaryScreen({
         .slice(0, 40);
       await html2pdf()
         .set({
-          margin: [10, 10, 12, 10],
+          // El documento ya tiene el ancho exacto de A4 (794px @96dpi) con su
+          // propio padding interno, por eso el margen del PDF es 0: mapea 1:1
+          // sin escalar ni desbordar.
+          margin: 0,
           filename: `resumen-costos-${slug || "lab"}.pdf`,
           image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff", windowWidth: 794 },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-          pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+          pagebreak: { mode: ["css", "legacy"] },
         })
         .from(pdfRef.current)
         .save();
@@ -223,6 +227,204 @@ export function SummaryScreen({
     dateStyle: "long",
     timeStyle: "short",
   });
+
+  // Ancho exacto de una A4 vertical a 96dpi. El header es full-bleed; el cuerpo
+  // usa padding interno como márgenes. Se genera con html2pdf margin:0.
+  const pdfDocStyle: React.CSSProperties = {
+    width: "794px",
+    background: PDF.white,
+    color: PDF.text,
+    fontFamily: "Arial, Helvetica, sans-serif",
+    fontSize: "12px",
+    lineHeight: 1.45,
+  };
+
+  const pdfInner = (
+    <>
+      {/* Encabezado (full-bleed) */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          background: PDF.blue,
+          color: PDF.white,
+          padding: "20px 40px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`${BASE_PATH}/img/INTA_300x300.jpg`}
+            alt="Logo INTA"
+            width={46}
+            height={46}
+            style={{ width: "46px", height: "46px", borderRadius: "8px", objectFit: "contain", background: PDF.white }}
+          />
+          <div>
+            <div style={{ fontSize: "16px", fontWeight: 700, lineHeight: 1.2 }}>
+              Calculadora de Costos de Servicios Rutinarios de Laboratorio
+            </div>
+            <div style={{ fontSize: "10px", letterSpacing: "1px", textTransform: "uppercase", opacity: 0.85 }}>
+              INTA Labs · Prototipos
+            </div>
+          </div>
+        </div>
+        <div style={{ textAlign: "right", fontSize: "11px", opacity: 0.9, minWidth: "110px" }}>
+          <div style={{ fontWeight: 700 }}>Resumen de costeo</div>
+          <div>{date}</div>
+        </div>
+      </div>
+      <div style={{ height: "3px", background: PDF.green }} />
+
+      <div style={{ padding: "22px 40px 26px" }}>
+        {/* Datos del servicio */}
+        <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "16px" }}>
+          <tbody>
+            <tr>
+              <td style={{ padding: "3px 0", width: "50%", verticalAlign: "top" }}>
+                <span style={{ color: PDF.muted }}>Servicio: </span>
+                <strong>{serviceName.trim() || "—"}</strong>
+              </td>
+              <td style={{ padding: "3px 0", width: "50%", verticalAlign: "top" }}>
+                <span style={{ color: PDF.muted }}>Laboratorio: </span>
+                <strong>{laboratoryName.trim() || "—"}</strong>
+              </td>
+            </tr>
+            <tr>
+              <td style={{ padding: "3px 0" }}>
+                <span style={{ color: PDF.muted }}>Fecha de cotización: </span>
+                <strong>{date}</strong>
+              </td>
+              <td style={{ padding: "3px 0" }}>
+                <span style={{ color: PDF.muted }}>Tipo de cambio: </span>
+                <strong>{fmtER(exchangeRate.rate)} ARS/USD</strong>{" "}
+                <span style={{ color: PDF.muted }}>(carga manual)</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Costo unitario destacado */}
+        <div
+          style={{
+            background: PDF.bg,
+            border: `1px solid ${PDF.line}`,
+            borderLeft: `4px solid ${PDF.blue}`,
+            borderRadius: "6px",
+            padding: "14px 18px",
+            marginBottom: "18px",
+            breakInside: "avoid",
+          }}
+        >
+          <div style={{ fontSize: "10px", letterSpacing: "1px", textTransform: "uppercase", color: PDF.muted }}>
+            Costo unitario del servicio rutinario
+          </div>
+          <div style={{ fontSize: "28px", fontWeight: 800, color: PDF.blueDark, lineHeight: 1.1 }}>
+            {fmtARS(grandTotal)}
+          </div>
+          {grandTotal > 0 && exchangeRate.rate > 0 && (
+            <div style={{ fontSize: "12px", color: PDF.muted }}>
+              ≈ {fmtUSD(grandTotal / exchangeRate.rate)}
+            </div>
+          )}
+        </div>
+
+        {/* Desglose por niveles */}
+        <div style={{ fontSize: "13px", fontWeight: 700, color: PDF.blueDark, marginBottom: "6px" }}>
+          Desglose por niveles
+        </div>
+        <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "18px", fontSize: "11.5px" }}>
+          <thead>
+            <tr style={{ background: PDF.blue, color: PDF.white }}>
+              <th style={{ textAlign: "left", padding: "7px 10px", fontWeight: 600 }}>Concepto</th>
+              <th style={{ textAlign: "right", padding: "7px 10px", fontWeight: 600, width: "160px" }}>Importe (ARS)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {levels.map((lv) => (
+              <Fragment key={lv.id}>
+                <tr style={{ background: "#EDF3F8" }}>
+                  <td style={{ padding: "7px 10px", fontWeight: 700, color: PDF.blueDark, borderTop: `1px solid ${PDF.line}` }}>
+                    {lv.label}
+                  </td>
+                  <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: PDF.blueDark, borderTop: `1px solid ${PDF.line}` }}>
+                    {fmtARS(lv.total)}
+                  </td>
+                </tr>
+                {lv.breakdown.map((br) => (
+                  <tr key={`${lv.id}-${br.label}`}>
+                    <td style={{ padding: "5px 10px 5px 24px", color: PDF.text, borderTop: `1px solid ${PDF.line}` }}>
+                      {br.label}
+                    </td>
+                    <td style={{ padding: "5px 10px", textAlign: "right", color: br.value > 0 ? PDF.text : PDF.muted, borderTop: `1px solid ${PDF.line}` }}>
+                      {fmtARS(br.value)}
+                    </td>
+                  </tr>
+                ))}
+              </Fragment>
+            ))}
+            <tr style={{ background: PDF.blueDark, color: PDF.white }}>
+              <td style={{ padding: "9px 10px", fontWeight: 800 }}>Costo Unitario Total</td>
+              <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 800 }}>{fmtARS(grandTotal)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Precio y afectación institucional */}
+        <div style={{ fontSize: "13px", fontWeight: 700, color: PDF.blueDark, marginBottom: "6px" }}>
+          Precio y afectación institucional
+        </div>
+        <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "18px", fontSize: "11.5px", breakInside: "avoid" }}>
+          <tbody>
+            {[
+              { label: "Precio base", val: basePrice },
+              { label: `Afectación EEA (${pricing.porcentajeEEA}%)`, val: afEEA },
+              { label: `Afectación Centro (${pricing.porcentajeCentro}%)`, val: afCentro },
+            ].map((row) => (
+              <tr key={row.label}>
+                <td style={{ padding: "6px 10px", borderTop: `1px solid ${PDF.line}` }}>{row.label}</td>
+                <td style={{ padding: "6px 10px", textAlign: "right", borderTop: `1px solid ${PDF.line}` }}>{fmtARS(row.val)}</td>
+              </tr>
+            ))}
+            <tr style={{ background: "#EBF7EF" }}>
+              <td style={{ padding: "9px 10px", fontWeight: 800, color: PDF.green, borderTop: `1px solid ${PDF.line}` }}>Precio neto</td>
+              <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 800, color: PDF.green, borderTop: `1px solid ${PDF.line}` }}>{fmtARS(precioNeto)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Descargo / carácter provisorio */}
+        <div
+          style={{
+            background: PDF.noteBg,
+            border: `1px solid ${PDF.noteBorder}`,
+            borderRadius: "6px",
+            padding: "12px 16px",
+            fontSize: "10.5px",
+            color: PDF.noteText,
+            lineHeight: 1.5,
+            breakInside: "avoid",
+          }}
+        >
+          <strong>Cálculo provisorio y orientativo.</strong> Los valores de este resumen surgen
+          exclusivamente de la información cargada manualmente por la persona usuaria (precios,
+          cantidades, tarifas horarias y tipo de cambio). No constituye una determinación oficial,
+          una tarifa homologada ni un precio institucional del INTA. Es el resultado de una
+          herramienta <strong>no oficial</strong>, de carácter experimental (prototipo), que
+          interpreta la Guía metodológica para el costeo de servicios rutinarios en laboratorios de
+          INTA. La responsabilidad sobre los datos y sobre cualquier decisión tomada a partir de
+          ellos recae en quien utiliza la herramienta.
+        </div>
+
+        {/* Pie */}
+        <div style={{ marginTop: "14px", paddingTop: "10px", borderTop: `1px solid ${PDF.line}`, fontSize: "9.5px", color: PDF.muted, display: "flex", justifyContent: "space-between", gap: "12px" }}>
+          <span>Generado con la Calculadora de Costos · INTA Labs (prototipo no oficial)</span>
+          <span style={{ whiteSpace: "nowrap" }}>{nowLabel}</span>
+        </div>
+      </div>
+    </>
+  );
 
   return (
     <div className="screen-enter flex flex-col">
@@ -374,12 +576,11 @@ export function SummaryScreen({
           </div>
           <div className="px-5 py-4 flex flex-col gap-2.5">
             <Btn
-              onClick={handleExportPDF}
-              variant={pdfStatus === "done" ? "success" : "primary"}
+              onClick={() => setShowPdfPreview(true)}
+              variant="primary"
               className="w-full"
-              disabled={pdfStatus === "loading"}
             >
-              {pdfStatus === "loading" ? "Generando PDF…" : pdfStatus === "done" ? "✓ PDF descargado" : "Exportar PDF"}
+              Previsualizar y exportar PDF
             </Btn>
             <Btn
               onClick={handleExportJSON}
@@ -403,204 +604,51 @@ export function SummaryScreen({
         <div className="h-4" />
       </div>
 
-      {/* Documento PDF (fuera de pantalla, capturado por html2pdf) */}
-      <div
-        aria-hidden
-        style={{ position: "fixed", left: "-10000px", top: 0, width: "780px" }}
-      >
+      {/* Nodo oculto usado por html2pdf para capturar el documento */}
+      <div aria-hidden style={{ position: "fixed", left: "-10000px", top: 0, width: "794px" }}>
+        <div ref={pdfRef} style={pdfDocStyle}>
+          {pdfInner}
+        </div>
+      </div>
+
+      {/* Previsualizador en pantalla */}
+      {showPdfPreview && (
         <div
-          ref={pdfRef}
-          style={{
-            width: "780px",
-            background: PDF.white,
-            color: PDF.text,
-            fontFamily: "Arial, Helvetica, sans-serif",
-            fontSize: "12px",
-            lineHeight: 1.45,
-          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Vista previa del PDF"
+          className="fixed inset-0 z-[110] flex flex-col bg-black/60"
         >
-          {/* Encabezado */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              background: PDF.blue,
-              color: PDF.white,
-              padding: "18px 22px",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`${BASE_PATH}/img/INTA_300x300.jpg`}
-                alt="Logo INTA"
-                width={46}
-                height={46}
-                style={{ width: "46px", height: "46px", borderRadius: "8px", objectFit: "contain", background: PDF.white }}
-              />
-              <div>
-                <div style={{ fontSize: "16px", fontWeight: 700, lineHeight: 1.2 }}>
-                  Calculadora de Costos de Servicios Rutinarios de Laboratorio
-                </div>
-                <div style={{ fontSize: "10px", letterSpacing: "1px", textTransform: "uppercase", opacity: 0.85 }}>
-                  INTA Labs · Prototipos
-                </div>
+          <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-white px-4 py-3">
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-inta-gray-800">Vista previa del PDF</div>
+              <div className="text-[11px] text-inta-gray-400 truncate">
+                Así se verá el informe. Cálculo provisorio y orientativo.
               </div>
             </div>
-            <div style={{ textAlign: "right", fontSize: "11px", opacity: 0.9, minWidth: "120px" }}>
-              <div style={{ fontWeight: 700 }}>Resumen de costeo</div>
-              <div>{date}</div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Btn
+                onClick={handleDownloadPDF}
+                variant={pdfStatus === "done" ? "success" : "primary"}
+                size="sm"
+                disabled={pdfStatus === "loading"}
+              >
+                {pdfStatus === "loading" ? "Generando…" : pdfStatus === "done" ? "✓ Descargado" : "Descargar PDF"}
+              </Btn>
+              <Btn onClick={() => setShowPdfPreview(false)} variant="outline" size="sm">
+                Cerrar
+              </Btn>
             </div>
           </div>
-          <div style={{ height: "3px", background: PDF.green }} />
 
-          <div style={{ padding: "20px 22px" }}>
-            {/* Datos del servicio */}
-            <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "16px" }}>
-              <tbody>
-                <tr>
-                  <td style={{ padding: "3px 0", width: "50%", verticalAlign: "top" }}>
-                    <span style={{ color: PDF.muted }}>Servicio: </span>
-                    <strong>{serviceName.trim() || "—"}</strong>
-                  </td>
-                  <td style={{ padding: "3px 0", width: "50%", verticalAlign: "top" }}>
-                    <span style={{ color: PDF.muted }}>Laboratorio: </span>
-                    <strong>{laboratoryName.trim() || "—"}</strong>
-                  </td>
-                </tr>
-                <tr>
-                  <td style={{ padding: "3px 0" }}>
-                    <span style={{ color: PDF.muted }}>Fecha de cotización: </span>
-                    <strong>{date}</strong>
-                  </td>
-                  <td style={{ padding: "3px 0" }}>
-                    <span style={{ color: PDF.muted }}>Tipo de cambio: </span>
-                    <strong>{fmtER(exchangeRate.rate)} ARS/USD</strong>{" "}
-                    <span style={{ color: PDF.muted }}>(carga manual)</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            {/* Costo unitario destacado */}
-            <div
-              style={{
-                background: PDF.bg,
-                border: `1px solid ${PDF.line}`,
-                borderLeft: `4px solid ${PDF.blue}`,
-                borderRadius: "6px",
-                padding: "14px 18px",
-                marginBottom: "18px",
-              }}
-            >
-              <div style={{ fontSize: "10px", letterSpacing: "1px", textTransform: "uppercase", color: PDF.muted }}>
-                Costo unitario del servicio rutinario
-              </div>
-              <div style={{ fontSize: "28px", fontWeight: 800, color: PDF.blueDark, lineHeight: 1.1 }}>
-                {fmtARS(grandTotal)}
-              </div>
-              {grandTotal > 0 && exchangeRate.rate > 0 && (
-                <div style={{ fontSize: "12px", color: PDF.muted }}>
-                  ≈ {fmtUSD(grandTotal / exchangeRate.rate)}
-                </div>
-              )}
-            </div>
-
-            {/* Desglose por niveles */}
-            <div style={{ fontSize: "13px", fontWeight: 700, color: PDF.blueDark, marginBottom: "6px" }}>
-              Desglose por niveles
-            </div>
-            <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "18px", fontSize: "11.5px" }}>
-              <thead>
-                <tr style={{ background: PDF.blue, color: PDF.white }}>
-                  <th style={{ textAlign: "left", padding: "7px 10px", fontWeight: 600 }}>Concepto</th>
-                  <th style={{ textAlign: "right", padding: "7px 10px", fontWeight: 600, width: "150px" }}>Importe (ARS)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {levels.map((lv) => (
-                  <Fragment key={lv.id}>
-                    <tr style={{ background: "#EDF3F8" }}>
-                      <td style={{ padding: "7px 10px", fontWeight: 700, color: PDF.blueDark, borderTop: `1px solid ${PDF.line}` }}>
-                        {lv.label}
-                      </td>
-                      <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: PDF.blueDark, borderTop: `1px solid ${PDF.line}` }}>
-                        {fmtARS(lv.total)}
-                      </td>
-                    </tr>
-                    {lv.breakdown.map((br) => (
-                      <tr key={`${lv.id}-${br.label}`}>
-                        <td style={{ padding: "5px 10px 5px 24px", color: PDF.text, borderTop: `1px solid ${PDF.line}` }}>
-                          {br.label}
-                        </td>
-                        <td style={{ padding: "5px 10px", textAlign: "right", color: br.value > 0 ? PDF.text : PDF.muted, borderTop: `1px solid ${PDF.line}` }}>
-                          {fmtARS(br.value)}
-                        </td>
-                      </tr>
-                    ))}
-                  </Fragment>
-                ))}
-                <tr style={{ background: PDF.blueDark, color: PDF.white }}>
-                  <td style={{ padding: "9px 10px", fontWeight: 800 }}>Costo Unitario Total</td>
-                  <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 800 }}>{fmtARS(grandTotal)}</td>
-                </tr>
-              </tbody>
-            </table>
-
-            {/* Precio y afectación institucional */}
-            <div style={{ fontSize: "13px", fontWeight: 700, color: PDF.blueDark, marginBottom: "6px" }}>
-              Precio y afectación institucional
-            </div>
-            <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "18px", fontSize: "11.5px" }}>
-              <tbody>
-                {[
-                  { label: "Precio base", val: basePrice },
-                  { label: `Afectación EEA (${pricing.porcentajeEEA}%)`, val: afEEA },
-                  { label: `Afectación Centro (${pricing.porcentajeCentro}%)`, val: afCentro },
-                ].map((row) => (
-                  <tr key={row.label}>
-                    <td style={{ padding: "6px 10px", borderTop: `1px solid ${PDF.line}` }}>{row.label}</td>
-                    <td style={{ padding: "6px 10px", textAlign: "right", borderTop: `1px solid ${PDF.line}` }}>{fmtARS(row.val)}</td>
-                  </tr>
-                ))}
-                <tr style={{ background: "#EBF7EF" }}>
-                  <td style={{ padding: "9px 10px", fontWeight: 800, color: PDF.green, borderTop: `1px solid ${PDF.line}` }}>Precio neto</td>
-                  <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 800, color: PDF.green, borderTop: `1px solid ${PDF.line}` }}>{fmtARS(precioNeto)}</td>
-                </tr>
-              </tbody>
-            </table>
-
-            {/* Descargo / carácter provisorio */}
-            <div
-              style={{
-                background: PDF.noteBg,
-                border: `1px solid ${PDF.noteBorder}`,
-                borderRadius: "6px",
-                padding: "12px 16px",
-                fontSize: "10.5px",
-                color: PDF.noteText,
-                lineHeight: 1.5,
-              }}
-            >
-              <strong>Cálculo provisorio y orientativo.</strong> Los valores de este resumen surgen
-              exclusivamente de la información cargada manualmente por la persona usuaria (precios,
-              cantidades, tarifas horarias y tipo de cambio). No constituye una determinación oficial,
-              una tarifa homologada ni un precio institucional del INTA. Es el resultado de una
-              herramienta <strong>no oficial</strong>, de carácter experimental (prototipo), que
-              interpreta la Guía metodológica para el costeo de servicios rutinarios en laboratorios de
-              INTA. La responsabilidad sobre los datos y sobre cualquier decisión tomada a partir de
-              ellos recae en quien utiliza la herramienta.
-            </div>
-
-            {/* Pie */}
-            <div style={{ marginTop: "14px", paddingTop: "10px", borderTop: `1px solid ${PDF.line}`, fontSize: "9.5px", color: PDF.muted, display: "flex", justifyContent: "space-between" }}>
-              <span>Generado con la Calculadora de Costos · INTA Labs (prototipo no oficial)</span>
-              <span>{nowLabel}</span>
+          {/* Lienzo scrolleable con la hoja centrada */}
+          <div className="flex-1 overflow-auto p-4 sm:p-6">
+            <div className="mx-auto w-fit shadow-2xl">
+              <div style={pdfDocStyle}>{pdfInner}</div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
