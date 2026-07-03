@@ -10,7 +10,7 @@ Estimación de costos rutinarios de laboratorio en **cinco niveles acumulativos*
 [![Estado: prototipo](https://img.shields.io/badge/Estado-prototipo%20funcional-F39200.svg)](#estado-y-alcance)
 [![Next.js](https://img.shields.io/badge/Next.js-13-000000.svg)](https://nextjs.org/)
 
-**🔗 App en vivo:** https://inta-labs-arg.github.io/inta_calculadora_costos_lab/
+**🔗 App en vivo:** https://inta-labs-arg.github.io/calculadora_costos_lab/
 
 </div>
 
@@ -99,7 +99,7 @@ una cuenta personal o una organización.
 Para activarlo una sola vez: en **Settings → Pages → Build and deployment → Source**, elegir
 **GitHub Actions**.
 
-Build local equivalente (opcional): `NEXT_PUBLIC_BASE_PATH="/inta_calculadora_costos_lab" npm run build`
+Build local equivalente (opcional): `NEXT_PUBLIC_BASE_PATH="/calculadora_costos_lab" npm run build`
 genera la carpeta `out/`.
 
 ## Tipo de cambio (carga manual)
