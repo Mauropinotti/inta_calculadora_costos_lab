@@ -9,6 +9,7 @@ import type { LevelTotal } from "@/lib/cost-calculation";
 import type { ExchangeRateState } from "@/contexts/ExchangeRateContext";
 import { useHourlyRates } from "@/contexts/HourlyRatesContext";
 import { round2 } from "@/lib/money";
+import { trackEvent } from "@/lib/analytics";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
@@ -49,10 +50,10 @@ interface SummaryScreenProps {
     afectacionCentro: number;
     precioNeto: number;
   };
-  onPriceChange: (v: number) => void;
-  onPercentageEEAChange: (v: number) => void;
-  onPercentageCentroChange: (v: number) => void;
-  onNavigate: (s: Screen) => void;
+  onPriceChange: (_v: number) => void;
+  onPercentageEEAChange: (_v: number) => void;
+  onPercentageCentroChange: (_v: number) => void;
+  onNavigate: (_s: Screen) => void;
   totals: ScreenTotals;
 }
 
@@ -200,6 +201,7 @@ export function SummaryScreen({
   const handleDownloadPDF = async () => {
     if (!pdfRef.current) return;
     setPdfStatus("loading");
+    trackEvent("download_pdf", "Report", `PDF Report: ${serviceName.trim() || "Sin Nombre"}`);
     try {
       const html2pdf = (await import("html2pdf.js")).default;
       const slug = (serviceName.trim() || "servicio")

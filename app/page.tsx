@@ -28,6 +28,7 @@ import { Level1Screen } from "@/components/screens/Level1Screen";
 import { Level2Screen } from "@/components/screens/Level2Screen";
 import { Level3Screen } from "@/components/screens/Level3Screen";
 import { SummaryScreen } from "@/components/screens/SummaryScreen";
+import { trackPageView, trackEvent } from "@/lib/analytics";
 
 // ── Exported types ────────────────────────────────────────────────────────────
 
@@ -288,7 +289,11 @@ function HomePageContent() {
     return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
   });
 
-  const { totals: _totals, orderedTotals, grandTotal } = useMemo(
+  useEffect(() => {
+    trackPageView(screen);
+  }, [screen]);
+
+  const { orderedTotals, grandTotal } = useMemo(
     () => calculateTotals(levels, { exchangeRate: exchangeRateState.rate }),
     [levels, exchangeRateState.rate],
   );
@@ -352,6 +357,7 @@ function HomePageContent() {
     setPriceARS(0);
     setPercentageEEA(10);
     setPercentageCentro(5);
+    trackEvent("load_demo_data", "Calculator", "Demo Data Loaded");
     navigate("dashboard");
   };
 
